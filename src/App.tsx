@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { MarkdownEditor, type EditorScrollInfo } from "./components/MarkdownEditor";
-import { MarkdownPreview } from "./components/MarkdownPreview";
+import { MarkdownPreview, type MarkdownPreviewHandle } from "./components/MarkdownPreview";
 import { TocSidebar } from "./components/TocSidebar";
-import { extractToc, type TocItem } from "./lib/markdown";
-import { scrollPreviewToLine } from "./lib/source-line";
+import { parseDocument } from "./lib/markdown-sections";
+import { applyReaderSettings, loadReaderSettings, saveReaderSettings, type PaperWidth, type ReaderSettings } from "./lib/reader-settings";
+import { loadRecent, rememberRecent, type RecentFile } from "./lib/recent-files";
 import {
   countLines,
   downloadText,
@@ -55,6 +56,7 @@ export default function App() {
   const isDirtyRef = useRef(isDirty);
   const viewModeRef = useRef(viewMode);
   const readerRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<MarkdownPreviewHandle>(null);
   const lastLaunchRef = useRef<string | null>(null);
   const lastEditorScroll = useRef<EditorScrollInfo>({
     topLine: 1,
@@ -74,9 +76,10 @@ export default function App() {
   isDirtyRef.current = isDirty;
   viewModeRef.current = viewMode;
 
-  const extractedToc = useMemo(() => extractToc(content), [content]);
-  const [domToc, setDomToc] = useState<TocItem[]>([]);
-  const toc = domToc.length > 0 ? domToc : extractedToc;
+  const toc = useMemo(() => parseDocument(content).toc, [content]);
+  const [recent, setRecent] = useState<RecentFile[]>(() => loadRecent());
+  const [recentOpen, setRecentOpen] = useState(false);
+  const [reader, setReader] = useState<ReaderSettings>(() => loadReaderSettings());
   const lineCount = useMemo(() => countLines(content), [content]);
   const fileName = fileNameOf(filePath);
   const displayName = isDirty ? `${fileName} •` : fileName;
@@ -85,6 +88,11 @@ export default function App() {
     const timer = window.setTimeout(() => setPreviewContent(content), 80);
     return () => window.clearTimeout(timer);
   }, [content]);
+
+  useEffect(() => {
+    applyReaderSettings(reader);
+    saveReaderSettings(reader);
+  }, [reader]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
@@ -124,6 +132,7 @@ export default function App() {
     async (path: string, mode: ViewMode = "preview") => {
       const text = await readTextFile(path);
       loadText(text, path, mode);
+      setRecent(rememberRecent(path));
     },
     [loadText],
   );
@@ -226,7 +235,7 @@ export default function App() {
       const pane = readerRef.current;
       if (!pane || viewModeRef.current !== "split") return;
       applyingPreviewScroll.current = true;
-      scrollPreviewToLine(pane, info);
+      previewRef.current?.syncToEditor(info);
       window.setTimeout(() => {
         applyingPreviewScroll.current = false;
       }, 40);
@@ -234,13 +243,7 @@ export default function App() {
   }, []);
 
   const jumpTo = useCallback((id: string) => {
-    const root = readerRef.current;
-    if (!root || !id) return;
-    const el = document.getElementById(id);
-    if (!el) return;
-    const top =
-      el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop - 16;
-    root.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    previewRef.current?.scrollToHeading(id);
     setActiveHeading(id);
   }, []);
 
@@ -366,19 +369,6 @@ export default function App() {
     };
   }, [confirmDiscard, loadPath, loadText]);
 
-  useLayoutEffect(() => {
-    const root = readerRef.current;
-    if (!root) return;
-    const items = [
-      ...root.querySelectorAll<HTMLHeadingElement>("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]"),
-    ].map((el) => ({
-      id: el.id,
-      text: (el.textContent || "").trim(),
-      level: Number(el.tagName.slice(1)),
-    }));
-    setDomToc(items);
-  }, [previewContent, viewMode]);
-
   useEffect(() => {
     const root = readerRef.current;
     if (!root) return;
@@ -413,6 +403,12 @@ export default function App() {
     if (!applyingPreviewScroll.current) followEditor.current = false;
   };
 
+  const cyclePaper = () => {
+    const order: PaperWidth[] = ["narrow", "normal", "wide"];
+    const next = order[(order.indexOf(reader.paper) + 1) % order.length];
+    setReader((s) => ({ ...s, paper: next }));
+  };
+
   const enterEdit = () => {
     followEditor.current = true;
     setViewMode("split");
@@ -435,6 +431,32 @@ export default function App() {
           <button type="button" onClick={() => void handleOpen()}>
             打开
           </button>
+          {recent.length > 0 ? (
+            <div className="recent-wrap">
+              <button type="button" className={recentOpen ? "is-on" : ""} onClick={() => setRecentOpen((v) => !v)}>
+                最近
+              </button>
+              {recentOpen ? (
+                <ul className="recent-menu">
+                  {recent.map((item) => (
+                    <li key={item.path}>
+                      <button
+                        type="button"
+                        title={item.path}
+                        onClick={() => {
+                          setRecentOpen(false);
+                          if (!confirmDiscard()) return;
+                          void loadPath(item.path, "preview");
+                        }}
+                      >
+                        {item.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
           <button type="button" onClick={handleNew}>
             新建
           </button>
@@ -451,6 +473,15 @@ export default function App() {
         </div>
 
         <div className="chrome__right">
+          <button type="button" title="缩小字号" onClick={() => setReader((s) => ({ ...s, fontScale: Math.max(0.85, +(s.fontScale - 0.08).toFixed(2)) }))}>
+            A−
+          </button>
+          <button type="button" title="放大字号" onClick={() => setReader((s) => ({ ...s, fontScale: Math.min(1.4, +(s.fontScale + 0.08).toFixed(2)) }))}>
+            A+
+          </button>
+          <button type="button" title="纸面宽度" onClick={cyclePaper}>
+            {reader.paper === "narrow" ? "窄" : reader.paper === "wide" ? "宽" : "中"}
+          </button>
           <button
             type="button"
             className={tocOpen ? "is-on" : ""}
@@ -497,7 +528,13 @@ export default function App() {
           onDoubleClick={onPreviewDoubleClick}
         >
           <article className="paper">
-            <MarkdownPreview content={previewContent} isDark={isDark} />
+            <MarkdownPreview
+              ref={previewRef}
+              content={previewContent}
+              isDark={isDark}
+              filePath={filePath}
+              scrollParentRef={readerRef}
+            />
           </article>
 
           {viewMode === "preview" ? (

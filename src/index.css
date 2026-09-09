@@ -151,6 +151,35 @@ button:active {
   gap: 4px;
 }
 
+.recent-wrap {
+  position: relative;
+}
+
+.recent-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  min-width: 220px;
+  max-width: 360px;
+  background: var(--bg-preview);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: var(--shadow-paper);
+}
+
+.recent-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chrome__right {
   justify-content: flex-end;
 }
@@ -287,7 +316,7 @@ button:active {
 }
 
 .paper {
-  width: min(46rem, 100%);
+  width: min(var(--paper-max, 46rem), 100%);
   margin: 0 auto;
   padding: 3.1rem 3.4rem 4.2rem;
   background: var(--bg-preview);
@@ -307,7 +336,7 @@ button:active {
 
 .md-body {
   font-family: var(--font-body);
-  font-size: 17.5px;
+  font-size: calc(17.5px * var(--font-scale, 1));
   line-height: 1.88;
   color: var(--text-primary);
   word-break: break-word;
