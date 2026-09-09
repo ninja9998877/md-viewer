@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { readMarkdownFile, writeMarkdownFile } from "./lib/fs";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { MarkdownEditor, type EditorScrollInfo } from "./components/MarkdownEditor";
@@ -130,7 +130,7 @@ export default function App() {
 
   const loadPath = useCallback(
     async (path: string, mode: ViewMode = "preview") => {
-      const text = await readTextFile(path);
+      const text = await readMarkdownFile(path);
       loadText(text, path, mode);
       setRecent(rememberRecent(path));
     },
@@ -191,7 +191,7 @@ export default function App() {
         defaultPath: filePathRef.current || "untitled.md",
       });
       if (selected) {
-        await writeTextFile(selected, current);
+        await writeMarkdownFile(selected, current);
         setFilePath(selected);
         setIsDirty(false);
       }
@@ -208,7 +208,7 @@ export default function App() {
       return;
     }
     try {
-      await writeTextFile(path, contentRef.current);
+      await writeMarkdownFile(path, contentRef.current);
       setIsDirty(false);
     } catch {
       await handleSaveAs();
