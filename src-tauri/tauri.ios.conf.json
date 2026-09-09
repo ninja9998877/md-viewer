@@ -1,0 +1,19 @@
+{
+  "productName": "Moye",
+  "app": {
+    "windows": [
+      {
+        "title": "Moye",
+        "width": 390,
+        "height": 844,
+        "minWidth": 320,
+        "minHeight": 480
+      }
+    ]
+  },
+  "bundle": {
+    "iOS": {
+      "minimumSystemVersion": "16.0"
+    }
+  }
+}

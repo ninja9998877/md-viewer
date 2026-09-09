@@ -1,0 +1,6 @@
+CFBundleDisplayName = "墨页";
+CFBundleName = "墨页";
+NSDocumentsFolderUsageDescription = "墨页只会读取你打开或拖入的 Markdown 文件，文件留在这台设备上。";
+NSDesktopFolderUsageDescription = "墨页只会读取你打开或拖入的 Markdown 文件，文件留在这台设备上。";
+NSDownloadsFolderUsageDescription = "墨页只会读取你打开或拖入的 Markdown 文件，文件留在这台设备上。";
+NSFileProviderDomainUsageDescription = "墨页会打开你选择的 Markdown 文件，包括 iCloud 云盘。";

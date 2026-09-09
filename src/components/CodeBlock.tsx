@@ -10,6 +10,7 @@ import {
 } from "react";
 import mermaid from "mermaid";
 import { getNodeText, languageLabel } from "../lib/markdown";
+import { fmt, useI18n } from "../i18n";
 
 const COLLAPSE_LINES = 28;
 
@@ -55,10 +56,11 @@ export function MermaidBlock({ code, isDark }: { code: string; isDark: boolean }
     };
   }, [code, isDark, reactId]);
 
+  const { t } = useI18n();
   if (error) {
     return (
       <div className="mermaid-card mermaid-card--error">
-        <div className="alert__kicker">图表无法渲染</div>
+        <div className="alert__kicker">{t.mermaidError}</div>
         <pre>{error}</pre>
       </div>
     );
@@ -94,6 +96,7 @@ export function PreBlock({
     return raw.split("\n").length;
   }, [raw]);
 
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const canCollapse = lineCount > COLLAPSE_LINES;
@@ -121,9 +124,9 @@ export function PreBlock({
     <div className="code-card" data-source-line={sourceLine}>
       <div className="code-card__bar">
         <span className="code-card__lang">{languageLabel(lang)}</span>
-        <span className="code-card__meta">{lineCount} 行</span>
+        <span className="code-card__meta">{fmt(t.lines, { n: lineCount })}</span>
         <button type="button" className="code-card__copy" onClick={() => void copy()}>
-          {copied ? "已复制" : "复制"}
+          {copied ? t.copied : t.copy}
         </button>
       </div>
       <div className={`code-card__body ${collapsed ? "is-collapsed" : ""}`}>
@@ -135,7 +138,7 @@ export function PreBlock({
           className="code-card__more"
           onClick={() => setExpanded((v) => !v)}
         >
-          {expanded ? "收起代码" : `展开全部 ${lineCount} 行`}
+          {expanded ? t.collapseCode : fmt(t.expandCode, { n: lineCount })}
         </button>
       ) : null}
     </div>

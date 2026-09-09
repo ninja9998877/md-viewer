@@ -1,0 +1,6 @@
+CFBundleDisplayName = "Moye";
+CFBundleName = "Moye";
+NSDocumentsFolderUsageDescription = "Moye reads Markdown files you open or drop in. Files stay on this device.";
+NSDesktopFolderUsageDescription = "Moye reads Markdown files you open or drop in. Files stay on this device.";
+NSDownloadsFolderUsageDescription = "Moye reads Markdown files you open or drop in. Files stay on this device.";
+NSFileProviderDomainUsageDescription = "Moye opens Markdown files you pick, including iCloud Drive.";

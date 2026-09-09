@@ -7,8 +7,9 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { MarkdownEditor, type EditorScrollInfo } from "./components/MarkdownEditor";
 import { MarkdownPreview, type MarkdownPreviewHandle } from "./components/MarkdownPreview";
 import { TocSidebar } from "./components/TocSidebar";
+import { AppMenu } from "./components/AppMenu";
 import { parseDocument } from "./lib/markdown-sections";
-import { applyReaderSettings, loadReaderSettings, saveReaderSettings, type PaperWidth, type ReaderSettings } from "./lib/reader-settings";
+import { applyReaderSettings, loadReaderSettings, saveReaderSettings, type ReaderSettings } from "./lib/reader-settings";
 import { loadRecent, rememberRecent, type RecentFile } from "./lib/recent-files";
 import {
   countLines,
@@ -17,21 +18,11 @@ import {
   isMarkdownPath,
   isTauri,
   isTypingTarget,
+  isWindows,
 } from "./lib/platform";
+import { en, fmt, useI18n, zh } from "./i18n";
 
 type ViewMode = "preview" | "split";
-
-const WELCOME = `# 开始阅读
-
-把 Agent 写好的 Markdown 拖进来，或点左上角打开。
-
-这篇阅读器**默认就是预览**。按 E 进入编辑，Esc 回到阅读；O 打开目录。
-
----
-
-> [!TIP]
-> 长文档请先看左侧目录。代码块默认折叠，图表和公式会按原文渲染。
-`;
 
 function readTheme(): boolean {
   try {
@@ -42,14 +33,14 @@ function readTheme(): boolean {
 }
 
 export default function App() {
-  const [content, setContent] = useState(WELCOME);
+  const { t, locale, setLocale } = useI18n();
+  const [content, setContent] = useState(t.welcome);
   const [filePath, setFilePath] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("preview");
   const [isDark, setIsDark] = useState(readTheme);
   const [tocOpen, setTocOpen] = useState(false);
   const [activeHeading, setActiveHeading] = useState("");
-  const [progress, setProgress] = useState(0);
   const [previewContent, setPreviewContent] = useState(content);
 
   const contentRef = useRef(content);
@@ -57,6 +48,7 @@ export default function App() {
   const isDirtyRef = useRef(isDirty);
   const viewModeRef = useRef(viewMode);
   const readerRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<MarkdownPreviewHandle>(null);
   const lastLaunchRef = useRef<string | null>(null);
   const lastEditorScroll = useRef<EditorScrollInfo>({
@@ -79,10 +71,14 @@ export default function App() {
 
   const toc = useMemo(() => parseDocument(content).toc, [content]);
   const [recent, setRecent] = useState<RecentFile[]>(() => loadRecent());
-  const [recentOpen, setRecentOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const menuWrapRef = useRef<HTMLDivElement>(null);
+  const menuOpenRef = useRef(false);
+  menuOpenRef.current = menuOpen;
   const [reader, setReader] = useState<ReaderSettings>(() => loadReaderSettings());
   const lineCount = useMemo(() => countLines(content), [content]);
-  const fileName = fileNameOf(filePath);
+  const fileName = fileNameOf(filePath, t.untitled);
   const displayName = isDirty ? `${fileName} •` : fileName;
 
   useEffect(() => {
@@ -105,18 +101,36 @@ export default function App() {
   }, [isDark]);
 
   useEffect(() => {
-    const title = `${isDirty ? "• " : ""}${fileName} — 墨页`;
+    if (!menuOpen) return;
+    const onPointer = (event: PointerEvent) => {
+      if (!menuWrapRef.current?.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener("pointerdown", onPointer);
+    return () => window.removeEventListener("pointerdown", onPointer);
+  }, [menuOpen]);
+
+  useEffect(() => {
+    const title = `${isDirty ? "• " : ""}${fileName} — ${t.productName}`;
     document.title = title;
     if (!isTauri()) return;
     void getCurrentWindow()
       .setTitle(title)
       .catch(() => undefined);
-  }, [fileName, isDirty]);
+  }, [fileName, isDirty, t.productName]);
+
+  useEffect(() => {
+    if (contentRef.current === zh.welcome || contentRef.current === en.welcome) {
+      setContent(t.welcome);
+      setPreviewContent(t.welcome);
+    }
+  }, [locale, t.welcome]);
 
   const confirmDiscard = useCallback(() => {
     if (!isDirtyRef.current) return true;
-    return window.confirm("有未保存的更改，确定要放弃吗？");
-  }, []);
+    return window.confirm(t.confirmDiscard);
+  }, [t.confirmDiscard]);
 
   const loadText = useCallback((text: string, path: string | null, mode: ViewMode) => {
     setContent(text);
@@ -125,8 +139,8 @@ export default function App() {
     setIsDirty(false);
     setViewMode(mode);
     setActiveHeading("");
-    setProgress(0);
     if (readerRef.current) readerRef.current.scrollTop = 0;
+    if (progressRef.current) progressRef.current.style.transform = "scaleX(0)";
   }, []);
 
   const loadPath = useCallback(
@@ -144,7 +158,7 @@ export default function App() {
     if (!md || !md.startsWith("/examples/") || !isMarkdownPath(md)) return;
     void fetch(md)
       .then((res) => {
-        if (!res.ok) throw new Error(`无法加载 ${md}`);
+        if (!res.ok) throw new Error(`Failed to load ${md}`);
         return res.text();
       })
       .then((text) => loadText(text, md, "preview"))
@@ -175,15 +189,15 @@ export default function App() {
       input.click();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      window.alert(`打开文件失败\n${message}`);
+      window.alert(fmt(t.openFailed, { message }));
     }
-  }, [confirmDiscard, loadPath, loadText]);
+  }, [confirmDiscard, loadPath, loadText, t.openFailed]);
 
   const handleSaveAs = useCallback(async () => {
     const current = contentRef.current;
     try {
       if (!isTauri()) {
-        downloadText(fileNameOf(filePathRef.current), current);
+        downloadText(fileNameOf(filePathRef.current, t.untitled), current);
         setIsDirty(false);
         return;
       }
@@ -198,9 +212,9 @@ export default function App() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      window.alert(`保存失败\n${message}`);
+      window.alert(fmt(t.saveFailed, { message }));
     }
-  }, []);
+  }, [t.saveFailed, t.untitled]);
 
   const handleSave = useCallback(async () => {
     const path = filePathRef.current;
@@ -218,8 +232,8 @@ export default function App() {
 
   const handleNew = useCallback(() => {
     if (!confirmDiscard()) return;
-    loadText("# 新文档\n\n", null, "split");
-  }, [confirmDiscard, loadText]);
+    loadText(t.newDoc, null, "split");
+  }, [confirmDiscard, loadText, t.newDoc]);
 
   const handleContentChange = useCallback((next: string) => {
     setContent(next);
@@ -239,7 +253,7 @@ export default function App() {
       previewRef.current?.syncToEditor(info);
       window.setTimeout(() => {
         applyingPreviewScroll.current = false;
-      }, 40);
+      }, 160);
     });
   }, []);
 
@@ -273,6 +287,45 @@ export default function App() {
   }, [loadPath]);
 
   useEffect(() => {
+    if (!isTauri()) return;
+    void invoke("watch_markdown", { path: filePath });
+  }, [filePath]);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    let cancelled = false;
+    const unlisten = listen<string>("file-changed", async (event) => {
+      if (cancelled) return;
+      const path = event.payload;
+      if (!path || path !== filePathRef.current || isDirtyRef.current) return;
+      try {
+        const text = await readMarkdownFile(path);
+        if (cancelled || path !== filePathRef.current || isDirtyRef.current) return;
+        if (text === contentRef.current) return;
+        const scroll = readerRef.current?.scrollTop ?? 0;
+        setContent(text);
+        setPreviewContent(text);
+        requestAnimationFrame(() => {
+          if (readerRef.current) readerRef.current.scrollTop = scroll;
+        });
+        setToast(t.fileUpdated);
+      } catch (err) {
+        console.error(err);
+      }
+    });
+    return () => {
+      cancelled = true;
+      void unlisten.then((fn) => fn());
+    };
+  }, [t.fileUpdated]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 1600);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
       const typing = isTypingTarget(e.target);
@@ -292,8 +345,14 @@ export default function App() {
         handleNew();
         return;
       }
-      if (e.key === "Escape" && viewModeRef.current === "split") {
-        setViewMode("preview");
+      if (e.key === "Escape") {
+        if (menuOpenRef.current) {
+          setMenuOpen(false);
+          return;
+        }
+        if (viewModeRef.current === "split") {
+          setViewMode("preview");
+        }
         return;
       }
       if (typing || mod) return;
@@ -324,7 +383,7 @@ export default function App() {
     const openDroppedFile = async (file: File) => {
       if (!confirmDiscard()) return;
       if (!isMarkdownPath(file.name)) {
-        window.alert("请拖入 .md 或 .markdown 文件");
+        window.alert(t.dropNeedMd);
         return;
       }
       loadText(await file.text(), file.name, "preview");
@@ -337,7 +396,7 @@ export default function App() {
           const path = event.payload.paths[0];
           if (!path) return;
           if (!isMarkdownPath(path)) {
-            window.alert("请拖入 .md 或 .markdown 文件");
+            window.alert(t.dropNeedMd);
             return;
           }
           if (!confirmDiscard()) return;
@@ -368,7 +427,7 @@ export default function App() {
       window.removeEventListener("drop", prevent);
       unlisten?.();
     };
-  }, [confirmDiscard, loadPath, loadText]);
+  }, [confirmDiscard, loadPath, loadText, t.dropNeedMd]);
 
   useEffect(() => {
     const root = readerRef.current;
@@ -392,31 +451,27 @@ export default function App() {
   }, [previewContent, viewMode, tocOpen]);
 
   useEffect(() => {
-    if (viewMode !== "split" || !followEditor.current) return;
+    if (viewMode !== "split") return;
+    followEditor.current = true;
     applyEditorScroll(lastEditorScroll.current);
-  }, [previewContent, viewMode, applyEditorScroll]);
+  }, [viewMode, applyEditorScroll]);
 
   const onReaderScroll = () => {
     const el = readerRef.current;
     if (!el) return;
     const max = el.scrollHeight - el.clientHeight;
-    setProgress(max <= 0 ? 1 : el.scrollTop / max);
+    const p = max <= 0 ? 1 : el.scrollTop / max;
+    if (progressRef.current) progressRef.current.style.transform = `scaleX(${p})`;
     if (!applyingPreviewScroll.current) followEditor.current = false;
   };
 
   const handleAssociate = async () => {
     try {
       await invoke("associate_markdown_files");
-      window.alert("已把墨页设为 .md 默认打开方式。若仍用记事本打开，请关掉资源管理器窗口后再双击一次。");
+      window.alert(t.associated);
     } catch (err) {
-      window.alert(`设置失败\n${err}`);
+      window.alert(fmt(t.associateFailed, { error: String(err) }));
     }
-  };
-
-  const cyclePaper = () => {
-    const order: PaperWidth[] = ["narrow", "normal", "wide"];
-    const next = order[(order.indexOf(reader.paper) + 1) % order.length];
-    setReader((s) => ({ ...s, paper: next }));
   };
 
   const enterEdit = () => {
@@ -434,85 +489,77 @@ export default function App() {
 
   return (
     <div className={`app ${viewMode === "split" ? "is-split" : "is-reading"} ${tocOpen ? "has-toc" : ""}`}>
-      <div className="read-progress" style={{ transform: `scaleX(${progress})` }} />
+      <div className="read-progress" ref={progressRef} />
+
+      {toast ? <div className="live-toast">{toast}</div> : null}
 
       <header className="chrome">
         <div className="chrome__left">
-          <button type="button" onClick={() => void handleOpen()}>
-            打开
-          </button>
-          {recent.length > 0 ? (
-            <div className="recent-wrap">
-              <button type="button" className={recentOpen ? "is-on" : ""} onClick={() => setRecentOpen((v) => !v)}>
-                最近
-              </button>
-              {recentOpen ? (
-                <ul className="recent-menu">
-                  {recent.map((item) => (
-                    <li key={item.path}>
-                      <button
-                        type="button"
-                        title={item.path}
-                        onClick={() => {
-                          setRecentOpen(false);
-                          if (!confirmDiscard()) return;
-                          void loadPath(item.path, "preview");
-                        }}
-                      >
-                        {item.name}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          ) : null}
-          <button type="button" onClick={handleNew}>
-            新建
-          </button>
-          {viewMode === "split" ? (
-            <button type="button" onClick={() => void handleSave()}>
-              保存
+          <div className="menu-wrap" ref={menuWrapRef}>
+            <button
+              type="button"
+              className={menuOpen ? "is-on" : ""}
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              {t.menu}
             </button>
-          ) : null}
+            {menuOpen ? (
+              <AppMenu
+                t={t}
+                locale={locale}
+                recent={recent}
+                canSave={viewMode === "split"}
+                tocOpen={tocOpen}
+                isDark={isDark}
+                reader={reader}
+                showAssociate={isTauri() && isWindows()}
+                onOpen={() => {
+                  setMenuOpen(false);
+                  void handleOpen();
+                }}
+                onNew={() => {
+                  setMenuOpen(false);
+                  handleNew();
+                }}
+                onSave={() => {
+                  setMenuOpen(false);
+                  void handleSave();
+                }}
+                onRecent={(path) => {
+                  setMenuOpen(false);
+                  if (!confirmDiscard()) return;
+                  void loadPath(path, "preview");
+                }}
+                onToggleToc={() => {
+                  setMenuOpen(false);
+                  setTocOpen((v) => !v);
+                }}
+                onFont={(next) => setReader((s) => ({ ...s, fontScale: next }))}
+                onPaper={(paper) => setReader((s) => ({ ...s, paper }))}
+                onToggleDark={() => setIsDark((v) => !v)}
+                onLocale={setLocale}
+                onAssociate={() => {
+                  setMenuOpen(false);
+                  void handleAssociate();
+                }}
+              />
+            ) : null}
+          </div>
         </div>
 
-        <div className="chrome__title" title={filePath ?? "未保存的文档"}>
+        <div className="chrome__title" title={filePath ?? t.unsavedDoc}>
           {displayName}
-          {isDirty ? <span className="chrome__dirty">未保存</span> : null}
+          {isDirty ? <span className="chrome__dirty">{t.unsaved}</span> : null}
         </div>
 
         <div className="chrome__right">
-          <button type="button" title="缩小字号" onClick={() => setReader((s) => ({ ...s, fontScale: Math.max(0.85, +(s.fontScale - 0.08).toFixed(2)) }))}>
-            A−
-          </button>
-          <button type="button" title="放大字号" onClick={() => setReader((s) => ({ ...s, fontScale: Math.min(1.4, +(s.fontScale + 0.08).toFixed(2)) }))}>
-            A+
-          </button>
-          <button type="button" title="纸面宽度" onClick={cyclePaper}>
-            {reader.paper === "narrow" ? "窄" : reader.paper === "wide" ? "宽" : "中"}
-          </button>
-          <button
-            type="button"
-            className={tocOpen ? "is-on" : ""}
-            onClick={() => setTocOpen((v) => !v)}
-            title="目录（O）"
-          >
-            目录
-          </button>
-          <button type="button" title="把 .md 设为用墨页打开" onClick={() => void handleAssociate()}>
-            设为默认
-          </button>
-          <button type="button" onClick={() => setIsDark((v) => !v)}>
-            {isDark ? "浅色" : "深色"}
-          </button>
           {viewMode === "preview" ? (
             <button type="button" className="chrome__ghost" onClick={enterEdit}>
-              编辑
+              {t.edit}
             </button>
           ) : (
             <button type="button" className="chrome__done" onClick={exitEdit}>
-              完成编辑
+              {t.editDone}
             </button>
           )}
         </div>
@@ -552,7 +599,7 @@ export default function App() {
 
           {viewMode === "preview" ? (
             <button type="button" className="floating-edit" onClick={enterEdit}>
-              编辑 · E
+              {t.editHint}
             </button>
           ) : null}
         </div>
@@ -560,9 +607,9 @@ export default function App() {
 
       {viewMode === "split" ? (
         <footer className="status-bar">
-          <span>{filePath || "未保存的文档"}</span>
-          <span>{lineCount} 行</span>
-          <span>{content.length} 字</span>
+          <span>{filePath || t.unsavedDoc}</span>
+          <span>{fmt(t.lines, { n: lineCount })}</span>
+          <span>{fmt(t.chars, { n: content.length })}</span>
         </footer>
       ) : null}
     </div>

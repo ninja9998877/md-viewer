@@ -124,7 +124,7 @@
 
 ### 记下、但不插队
 
-- [ ] **界面国际化**：`zh-CN` + `en`，跟随系统语言，可手动覆盖。文档内容本身已是 Unicode（中英混排可用）；不做 RTL、不做全球字体包。上架 App Store 前必须有英文界面。此条不进 P0。
+- [x] **界面国际化**：`zh-CN` + `en`，跟随系统语言，顶栏可手动切换。文档内容本身已是 Unicode；不做 RTL、不做全球字体包。
 
 ### P0 · 阅读器合格（约 4–6 周）
 
@@ -145,9 +145,10 @@
 目标：Mac 上双击 `.md` 用墨页打开，可公证分发。
 
 - [ ] 苹果开发者账号、Bundle ID 定死（建议 `com.ninja.moye`，不要再用占位 `com.super.md-viewer`）
+- [ ] 在 Mac 上执行 `npm run tauri ios init` 和 `tauri build --bundles app,dmg`（Windows 编不出 iOS / macOS 包）
 - [ ] macOS 签名 + 公证（先 Notary，再商店）
 - [ ] 沙盒、文件权限、拖放 bookmark
-- [ ] macOS 文件关联、Dock、Retina 图标
+- [ ] macOS / iOS 文件关联、Dock、Retina / App Icon
 - [ ] 隐私政策页（就一句话：不收集、不上传）
 - [ ] 深色模式跟系统
 
@@ -205,13 +206,14 @@
 
 ## 6. App Store 文案（先写死，避免做偏）
 
-- **名称：** 墨页
-- **英文名：** Moye
-- **副标题：** 给 AI 写的 Markdown 阅读器
-- **介绍首段：** 把 Agent 写的 Markdown 当成读物打开。默认预览，像纸一样读，文件只留在这台 Mac 上。
-- **关键词方向：** Markdown、阅读、AI、预览、本地、隐私  
+- **名称：** 墨页 / **Moye**
+- **副标题（中）：** 给 AI 写的 Markdown 阅读器
+- **Subtitle (EN):** A local reader for AI-written Markdown
+- **介绍首段（中）：** 把 Agent 写的 Markdown 当成读物打开。默认预览，像纸一样读，文件只留在这台设备上。
+- **Intro (EN):** Open Markdown from an Agent as a document, not an editor. Preview first, read like paper, files stay on this device.
+- **关键词方向：** Markdown、阅读、AI、预览、本地、隐私 / Markdown, reader, AI, preview, local, privacy  
   避开：笔记、知识库、编辑器、Obsidian
-- **权限说明：** 仅在你打开或拖入文件时读取该文件
+- **权限说明：** 仅在你打开或拖入文件时读取该文件 / Only reads a file when you open or drop it
 
 ---
 

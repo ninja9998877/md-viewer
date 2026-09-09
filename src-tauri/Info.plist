@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleAllowMixedLocalizations</key>
+  <true/>
+  <key>CFBundleDisplayName</key>
+  <string>Moye</string>
+  <key>NSDocumentsFolderUsageDescription</key>
+  <string>Moye reads Markdown files you open or drop in. Files stay on this device.</string>
+  <key>NSDesktopFolderUsageDescription</key>
+  <string>Moye reads Markdown files you open or drop in. Files stay on this device.</string>
+  <key>NSDownloadsFolderUsageDescription</key>
+  <string>Moye reads Markdown files you open or drop in. Files stay on this device.</string>
+  <key>NSFileProviderDomainUsageDescription</key>
+  <string>Moye opens Markdown files you pick, including iCloud Drive.</string>
+  <key>UIRequiresFullScreen</key>
+  <false/>
+  <key>UISupportedInterfaceOrientations</key>
+  <array>
+    <string>UIInterfaceOrientationPortrait</string>
+    <string>UIInterfaceOrientationLandscapeLeft</string>
+    <string>UIInterfaceOrientationLandscapeRight</string>
+  </array>
+  <key>UISupportedInterfaceOrientations~ipad</key>
+  <array>
+    <string>UIInterfaceOrientationPortrait</string>
+    <string>UIInterfaceOrientationPortraitUpsideDown</string>
+    <string>UIInterfaceOrientationLandscapeLeft</string>
+    <string>UIInterfaceOrientationLandscapeRight</string>
+  </array>
+</dict>
+</plist>

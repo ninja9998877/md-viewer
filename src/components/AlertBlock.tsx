@@ -1,5 +1,14 @@
 import { Children, type ReactNode } from "react";
-import { ALERT_META, parseAlert, type AlertKind } from "../lib/markdown";
+import { parseAlert, type AlertKind } from "../lib/markdown";
+import { useI18n, type Messages } from "../i18n";
+
+const ALERT_KEY: Record<AlertKind, keyof Messages> = {
+  note: "alertNote",
+  tip: "alertTip",
+  important: "alertImportant",
+  warning: "alertWarning",
+  caution: "alertCaution",
+};
 
 export function AlertBlock({
   children,
@@ -10,10 +19,11 @@ export function AlertBlock({
   dataAlert?: string;
   sourceLine?: number;
 }) {
+  const { t } = useI18n();
   const parsed = parseAlert(children);
   const kind = (parsed?.kind || dataAlert?.toLowerCase()) as AlertKind | undefined;
   const lineAttr = sourceLine ? { "data-source-line": sourceLine } : {};
-  if (!kind || !ALERT_META[kind]) {
+  if (!kind || !ALERT_KEY[kind]) {
     return (
       <blockquote className="quote" {...lineAttr}>
         {children}
@@ -22,10 +32,9 @@ export function AlertBlock({
   }
 
   const rest = parsed?.rest ?? Children.toArray(children);
-  const meta = ALERT_META[kind];
   return (
     <aside className={`alert alert--${kind}`} {...lineAttr}>
-      <div className="alert__kicker">{meta.label}</div>
+      <div className="alert__kicker">{t[ALERT_KEY[kind]]}</div>
       <div className="alert__body">{rest}</div>
     </aside>
   );

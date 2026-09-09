@@ -86,6 +86,7 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 body {
@@ -112,6 +113,7 @@ button:active {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
   background:
     radial-gradient(1200px 500px at 12% -10%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 55%),
     radial-gradient(900px 420px at 100% 0%, color-mix(in srgb, var(--heading-2) 12%, transparent), transparent 50%),
@@ -127,18 +129,22 @@ button:active {
   height: 3px;
   width: 100%;
   background: linear-gradient(90deg, var(--heading-2), var(--accent), var(--heading-1));
+  transform: scaleX(0);
   transform-origin: left center;
   pointer-events: none;
 }
 
 .chrome {
+  position: relative;
+  z-index: 30;
   display: grid;
-  grid-template-columns: 1fr minmax(0, 42%) 1fr;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  height: 46px;
-  padding: 0 10px;
+  height: calc(46px + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) 10px 0;
   flex-shrink: 0;
+  overflow: visible;
   background: var(--bg-chrome);
   border-bottom: 1px solid var(--border-color);
   backdrop-filter: blur(16px);
@@ -148,36 +154,103 @@ button:active {
 .chrome__right {
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 4px;
 }
 
-.recent-wrap {
+.menu-wrap {
   position: relative;
+  z-index: 2;
 }
 
-.recent-menu {
+.app-menu {
   position: absolute;
-  z-index: 20;
+  z-index: 50;
   top: calc(100% + 6px);
   left: 0;
+  width: min(280px, calc(100vw - 20px));
+  max-height: min(72vh, 560px);
+  overflow: auto;
   margin: 0;
-  padding: 6px;
-  list-style: none;
-  min-width: 220px;
-  max-width: 360px;
+  padding: 8px;
   background: var(--bg-preview);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: 12px;
   box-shadow: var(--shadow-paper);
+  pointer-events: auto;
 }
 
-.recent-menu button {
+.app-menu__group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-menu__sep {
+  height: 1px;
+  margin: 8px 6px;
+  background: var(--border-color);
+}
+
+.app-menu__label {
+  padding: 4px 10px 6px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.app-menu__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 4px 4px 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.app-menu__pills {
+  display: flex;
+  gap: 4px;
+}
+
+.app-menu button {
   display: block;
   width: 100%;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.app-menu__pills button {
+  width: auto;
+  min-width: 36px;
+  text-align: center;
+}
+
+.app-menu button:hover,
+.app-menu button.is-on {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.app-menu button.is-on {
+  color: var(--accent);
+}
+
+.live-toast {
+  position: fixed;
+  left: 50%;
+  top: calc(58px + env(safe-area-inset-top, 0px));
+  z-index: 60;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--heading-2);
+  color: var(--bg-preview);
+  font-size: 12px;
+  pointer-events: none;
 }
 
 .chrome__right {
@@ -204,6 +277,9 @@ button:active {
   padding: 5px 10px;
   border-radius: 8px;
   font-size: 13px;
+  line-height: 1.25;
+  white-space: nowrap;
+  flex-shrink: 0;
   color: var(--text-secondary);
 }
 
@@ -234,6 +310,8 @@ button:active {
   display: flex;
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .toc {
@@ -310,19 +388,30 @@ button:active {
   position: relative;
   flex: 1;
   min-width: 0;
-  overflow: auto;
-  padding: 28px 18px 96px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overflow-anchor: none;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  padding: 28px 18px calc(96px + env(safe-area-inset-bottom, 0px));
   scroll-padding-top: 20px;
 }
 
 .paper {
   width: min(var(--paper-max, 46rem), 100%);
+  max-width: 100%;
+  min-width: 0;
   margin: 0 auto;
   padding: 3.1rem 3.4rem 4.2rem;
   background: var(--bg-preview);
   border: 1px solid var(--border-subtle);
   border-radius: 18px;
   box-shadow: var(--shadow-paper);
+}
+
+.virtual-list {
+  overflow-anchor: none;
+  min-width: 0;
 }
 
 .is-split .reader {
@@ -340,6 +429,8 @@ button:active {
   line-height: 1.88;
   color: var(--text-primary);
   word-break: break-word;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .md-body > :first-child {
@@ -616,6 +707,7 @@ button:active {
   margin: 0;
   padding: 14px 16px 16px;
   overflow-x: auto;
+  overflow-y: hidden;
   font-family: var(--font-mono);
   font-size: 13.4px;
   line-height: 1.65;
@@ -663,7 +755,9 @@ button:active {
 .mermaid-card {
   margin: 1.4em 0;
   padding: 16px;
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
   border-radius: 14px;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
@@ -673,6 +767,7 @@ button:active {
   display: block;
   margin: 0 auto;
   max-width: 100%;
+  height: auto;
 }
 
 .mermaid-card--error {
@@ -681,7 +776,9 @@ button:active {
 }
 
 .table-wrap {
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
   margin: 1.3em 0 1.5em;
   border: 1px solid var(--border-color);
   border-radius: 12px;
@@ -723,13 +820,15 @@ button:active {
 .md-body .katex-display {
   margin: 1.4em 0;
   padding: 0.4em 0;
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .floating-edit {
   position: fixed;
-  right: 24px;
-  bottom: 24px;
+  right: calc(24px + env(safe-area-inset-right, 0px));
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   z-index: 5;
   padding: 8px 12px;
   border-radius: 999px;
@@ -783,7 +882,12 @@ button:active {
   .chrome {
     grid-template-columns: 1fr;
     height: auto;
-    padding: 8px 8px 6px;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 8px 6px;
+  }
+
+  .chrome__left,
+  .chrome__right {
+    flex-wrap: wrap;
   }
 
   .chrome__title {

@@ -10,8 +10,13 @@ export function isTypingTarget(target: EventTarget | null): boolean {
   return target.isContentEditable;
 }
 
-export function fileNameOf(path: string | null): string {
-  if (!path) return "未命名文档";
+export function isWindows(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Win/i.test(navigator.userAgent) || /Windows/i.test(navigator.platform);
+}
+
+export function fileNameOf(path: string | null, untitled = "Untitled"): string {
+  if (!path) return untitled;
   return path.split(/[\\/]/).pop() || path;
 }
 

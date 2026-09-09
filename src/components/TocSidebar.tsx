@@ -1,4 +1,5 @@
 import type { TocItem } from "../lib/markdown";
+import { useI18n } from "../i18n";
 
 interface TocSidebarProps {
   items: TocItem[];
@@ -7,18 +8,19 @@ interface TocSidebarProps {
 }
 
 export function TocSidebar({ items, activeId, onJump }: TocSidebarProps) {
+  const { t } = useI18n();
   if (items.length === 0) {
     return (
-      <nav className="toc" aria-label="目录">
-        <div className="toc__title">目录</div>
-        <p className="toc__empty">这篇文档没有标题</p>
+      <nav className="toc" aria-label={t.toc}>
+        <div className="toc__title">{t.toc}</div>
+        <p className="toc__empty">{t.tocEmpty}</p>
       </nav>
     );
   }
 
   return (
-    <nav className="toc" aria-label="目录">
-      <div className="toc__title">目录</div>
+    <nav className="toc" aria-label={t.toc}>
+      <div className="toc__title">{t.toc}</div>
       <ol className="toc__list">
         {items.map((item) => (
           <li

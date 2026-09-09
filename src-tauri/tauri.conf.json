@@ -47,6 +47,17 @@
         "mimeType": "text/markdown"
       }
     ],
+    "macOS": {
+      "minimumSystemVersion": "12.0",
+      "hardenedRuntime": true,
+      "files": {
+        "Resources/zh-Hans.lproj/InfoPlist.strings": "apple/zh-Hans.lproj/InfoPlist.strings",
+        "Resources/en.lproj/InfoPlist.strings": "apple/en.lproj/InfoPlist.strings"
+      }
+    },
+    "iOS": {
+      "minimumSystemVersion": "16.0"
+    },
     "windows": {
       "nsis": {
         "installMode": "both",

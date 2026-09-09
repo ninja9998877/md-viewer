@@ -77,9 +77,8 @@ export function MarkdownEditor({ value, onChange, isDark, onScroll }: MarkdownEd
         EditorView.updateListener.of((update: ViewUpdate) => {
           if (update.docChanged) {
             onChangeRef.current(update.state.doc.toString());
-          }
-          if (update.docChanged || update.geometryChanged) {
-            onScrollRef.current?.(readScroll(update.view));
+            const info = readScroll(update.view);
+            if (info.atEnd) onScrollRef.current?.(info);
           }
         }),
         EditorView.theme({

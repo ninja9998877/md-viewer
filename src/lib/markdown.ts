@@ -11,17 +11,6 @@ export interface TocItem {
 const ALERT_RE =
   /^\s*(?:\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]|!(NOTE|TIP|IMPORTANT|WARNING|CAUTION))(?:[ \t]*\r?\n|[ \t]+|$)/i;
 
-export const ALERT_META: Record<
-  AlertKind,
-  { label: string; hint: string }
-> = {
-  note: { label: "说明", hint: "NOTE" },
-  tip: { label: "提示", hint: "TIP" },
-  important: { label: "重要", hint: "IMPORTANT" },
-  warning: { label: "注意", hint: "WARNING" },
-  caution: { label: "警告", hint: "CAUTION" },
-};
-
 export function splitFrontmatter(source: string): {
   data: Record<string, string>;
   body: string;
