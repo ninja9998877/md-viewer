@@ -1,4 +1,7 @@
-use tauri::{Emitter, Manager as _};
+use tauri::Emitter;
+
+#[cfg(windows)]
+mod win_assoc;
 
 fn is_markdown_path(path: &str) -> bool {
     let lower = path.to_lowercase();
@@ -30,13 +33,29 @@ fn write_markdown(path: String, contents: String) -> Result<(), String> {
     std::fs::write(&path, contents).map_err(|err| format!("保存失败: {err}"))
 }
 
+#[tauri::command]
+fn associate_markdown_files() -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        win_assoc::associate_markdown()
+    }
+    #[cfg(not(windows))]
+    {
+        Ok(())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![read_markdown, write_markdown])
+        .invoke_handler(tauri::generate_handler![
+            read_markdown,
+            write_markdown,
+            associate_markdown_files
+        ])
         .setup(|app| {
             if let Some(path) = launch_markdown() {
                 let handle = app.handle().clone();

@@ -50,7 +50,9 @@
       "nsis": {
         "installMode": "both",
         "displayLanguageSelector": false,
-        "installerIcon": "icons/icon.ico"
+        "installerIcon": "icons/icon.ico",
+        "template": "./windows/installer.nsi",
+        "installerHooks": "./windows/hooks.nsh"
       }
     }
   }

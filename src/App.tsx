@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
+import { invoke } from "@tauri-apps/api/core";
 import { readMarkdownFile, writeMarkdownFile } from "./lib/fs";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -403,6 +404,15 @@ export default function App() {
     if (!applyingPreviewScroll.current) followEditor.current = false;
   };
 
+  const handleAssociate = async () => {
+    try {
+      await invoke("associate_markdown_files");
+      window.alert("已设为 .md 默认打开方式。若仍用记事本打开，请关掉资源管理器窗口后再双击一次。");
+    } catch (err) {
+      window.alert(`设置失败\n${err}`);
+    }
+  };
+
   const cyclePaper = () => {
     const order: PaperWidth[] = ["narrow", "normal", "wide"];
     const next = order[(order.indexOf(reader.paper) + 1) % order.length];
@@ -489,6 +499,9 @@ export default function App() {
             title="目录（O）"
           >
             目录
+          </button>
+          <button type="button" title="把 .md 设为用本软件打开" onClick={() => void handleAssociate()}>
+            设为默认
           </button>
           <button type="button" onClick={() => setIsDark((v) => !v)}>
             {isDark ? "浅色" : "深色"}
