@@ -17,6 +17,15 @@ lerna-debug.log*
 build-exe.log
 build-exe.exit
 
+# Secrets and local env
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.mobileprovision
+credentials*
+
 # Rust / Tauri
 src-tauri/target
 src-tauri/gen/schemas/*.json.bak
@@ -25,6 +34,15 @@ src-tauri/gen/schemas/*.json.bak
 release/
 *.exe
 *.pdb
+*.dmg
+*.app
+*.ipa
+*.apk
+*.aab
+
+# Mobile codegen (not part of the desktop tree)
+src-tauri/gen/apple
+src-tauri/gen/android
 
 # Editor
 .vscode/*

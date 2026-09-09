@@ -3,7 +3,7 @@
   "productName": "墨页",
   "mainBinaryName": "Moye",
   "version": "0.1.0",
-  "identifier": "com.super.md-viewer",
+  "identifier": "com.ninja.moye",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -54,9 +54,6 @@
         "Resources/zh-Hans.lproj/InfoPlist.strings": "apple/zh-Hans.lproj/InfoPlist.strings",
         "Resources/en.lproj/InfoPlist.strings": "apple/en.lproj/InfoPlist.strings"
       }
-    },
-    "iOS": {
-      "minimumSystemVersion": "16.0"
     },
     "windows": {
       "nsis": {

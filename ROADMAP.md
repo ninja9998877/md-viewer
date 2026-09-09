@@ -2,7 +2,7 @@
 
 > 产品名：**墨页**（英文 **Moye**）。  
 > 一句话：给 AI 写的 Markdown 用的本地阅读器。打开就是预览，像纸一样读，文件不离开电脑。  
-> 仓库现状：GitHub 私有。目标：开源 + 上架 Mac App Store。
+> 本仓库：Windows / macOS / Linux 桌面版。目标：MIT 开源，GitHub 免费下载。移动端不在此仓库。
 
 本文是内部规划，不是功能清单。先定「靠什么活、不做什么」，再排技术。
 
@@ -41,7 +41,7 @@
 | GitHub（公开后） | 完整阅读+编辑源码，自己编译 | 信任、Star、贡献、Windows/Linux 用户 |
 | GitHub Releases | 免费安装包（Win / macOS / Linux） | 获客，不设功能墙 |
 | Mac App Store | 同一套阅读器，签名、沙盒、双击打开、自动更新 | **一次性买断**（建议 $6.99 / ¥48） |
-| 以后 iOS / iPad | 手机/平板上读 Agent 文档 | 单独买断或 Universal Purchase |
+| 手机 / 平板 | 不在本仓库 | 另作商店发行 |
 
 ### 为什么这样
 
@@ -56,7 +56,7 @@
 - 不要做账号系统
 - 不要上传用户文档
 - 不要做主题商店分成（太早）
-- 不要一上来就上 iPhone
+- 不要把移动端商店包放进本仓库
 
 ### 以后可以加的付费（P4+，仍不锁阅读）
 
@@ -85,8 +85,8 @@
 │  Tauri 2 壳                              │
 │  文件、拖放、文件关联、沙盒 bookmark         │
 ├──────────────┬──────────────┬───────────┤
-│ Windows NSIS │ Mac .app/MAS │ Linux     │
-│ 安装包+关联   │ 公证 / 商店   │ AppImage  │
+│ Windows NSIS │ Mac .app/dmg │ Linux     │
+│ 安装包+关联   │ GitHub 免费  │ AppImage  │
 └──────────────┴──────────────┴───────────┘
 ```
 
@@ -101,9 +101,9 @@
 ### 平台优先级
 
 1. Windows（现在就能发）
-2. macOS 独立签名包 → Mac App Store
+2. macOS 独立包（GitHub 免费下载）
 3. Linux 随开源一起发
-4. iPad / iPhone（Tauri Mobile，先做只读）
+4. 移动端不在本仓库
 
 ### 工程基建（开源前必须有）
 
@@ -144,38 +144,28 @@
 
 目标：Mac 上双击 `.md` 用墨页打开，可公证分发。
 
-- [ ] 苹果开发者账号、Bundle ID 定死（建议 `com.ninja.moye`，不要再用占位 `com.super.md-viewer`）
-- [ ] 在 Mac 上执行 `npm run tauri ios init` 和 `tauri build --bundles app,dmg`（Windows 编不出 iOS / macOS 包）
-- [ ] macOS 签名 + 公证（先 Notary，再商店）
+- [x] Bundle ID：`com.ninja.moye`
+- [ ] macOS 签名 + 公证（GitHub 分发用，门禁少拦）
 - [ ] 沙盒、文件权限、拖放 bookmark
-- [ ] macOS / iOS 文件关联、Dock、Retina / App Icon
-- [ ] 隐私政策页（就一句话：不收集、不上传）
+- [ ] macOS 文件关联、Dock、Retina 图标
+- [x] 隐私说明：[PRIVACY.md](./PRIVACY.md)
 - [ ] 深色模式跟系统
 
 **过关：** 官网/GitHub 能下载已公证的 `.dmg`，Gatekeeper 不拦。
 
-### P2 · 开源 + Mac App Store（约 4 周，可与 P1 尾部重叠）
+### P2 · 开源（约 4 周，可与 P1 尾部重叠）
 
-目标：公开仓库，商店上架买断。
+目标：公开本仓库，GitHub Releases 提供 Win / macOS / Linux 安装包。
 
-- [ ] 许可证改为 MIT，加 `LICENSE`、`CONTRIBUTING`（小而严）
-- [ ] 仓库转 Public，GitHub Releases 自动发三端包
-- [ ] App Store 截图、副标题、关键词围绕「AI Markdown 阅读」
-- [ ] 买断定价、无内购账号
-- [ ] README / 主页与商店文案同一句定位
+- [x] 许可证 MIT
+- [ ] 仓库转 Public，GitHub Releases 自动发桌面包
+- [ ] README / 主页与定位同一句
 
-**过关：** 商店可搜到；GitHub 能 clone 编出同样功能。
+**过关：** GitHub 能 clone 编出同样功能；安装包可免费下载。
 
-### P3 · 移动阅读（开源之后）
+### P3 · 不在本仓库
 
-目标：手机上打开 Files 里的 md，只读为主。
-
-- [ ] iPad 优先（长文阅读）
-- [ ] 从「文件」App 打开
-- [ ] 触控目录、字号、主题
-- [ ] 编辑可极简或没有
-
-**过关：** 用 iPad 读完一篇 Agent 设计文档不别扭。
+手机 / 平板商店版另仓维护，不并入桌面开源树。
 
 ### P4 · 增值（有用户之后再做）
 
@@ -196,9 +186,8 @@
 | 0.1 | 现在：私有，Windows 能用 | 已到 |
 | 0.2 | P0 阅读器合格 + Win 安装包 | 1–1.5 月 |
 | 0.3 | P1 macOS 公证包 | 再 1.5–2 月 |
-| 1.0 | P2 开源 + Mac App Store | 再 1 月 |
+| 1.0 | P2 开源 + 三端桌面包 | 再 1 月 |
 | 1.1 | Linux 包 + 小幅阅读增强 | 随 1.0 |
-| 1.2 | iPad 阅读 | 1.0 之后看精力 |
 
 一人开发，按「关卡」不要按日历死磕。P0 虚拟化是技术最大风险，应最先做。
 
@@ -225,7 +214,7 @@
 2. 历史提交可保留（当前私有仓直接转 Public 即可）
 3. Issue 模板只要 Bug / 阅读效果两类，拒绝「做成 VS Code」类需求
 4. 不接功能膨胀 PR（同步、插件市场、Vim 模式）除非符合阅读器定位
-5. Windows / Linux 以 Releases 为主；Mac 同时提供 Releases 和 App Store
+5. Windows / macOS / Linux 以 GitHub Releases 免费安装包为主
 
 ---
 

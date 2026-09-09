@@ -2,7 +2,7 @@
 name = "md-viewer"
 version = "0.1.0"
 description = "Moye — a local reader for AI-written Markdown"
-authors = ["you"]
+authors = ["Moye contributors"]
 edition = "2021"
 
 [lib]
