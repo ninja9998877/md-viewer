@@ -29,4 +29,5 @@ Tauri 2 · React 19 · CodeMirror 6 · react-markdown
 
 ## 状态
 
-私有开发中。计划上架 Mac App Store；源码暂不公开。
+私有开发中。计划开源（MIT）并上架 Mac App Store。  
+规划见 [ROADMAP.md](./ROADMAP.md)。
