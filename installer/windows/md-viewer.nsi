@@ -1,14 +1,14 @@
 ; ==============================================
-; MD Viewer - Windows NSIS Installer
+; 墨页 Moye - Windows NSIS Installer
 ; 包含 .md / .markdown 文件关联注册
 ; ==============================================
 
 !include "MUI2.nsh"
 !include "FileAssociation.nsh"
 
-Name "MD Viewer"
-OutFile "MD-Viewer-Setup.exe"
-InstallDir "$PROGRAMFILES\MD Viewer"
+Name "墨页"
+OutFile "Moye-Setup.exe"
+InstallDir "$PROGRAMFILES\Moye"
 RequestExecutionLevel admin
 
 !define MUI_ABORTWARNING
@@ -27,25 +27,25 @@ RequestExecutionLevel admin
 
 Section "MainSection" SEC01
     SetOutPath "$INSTDIR"
-    File "..\target\release\md-viewer.exe"
+    File "..\target\release\Moye.exe"
     File /r "..\target\release\*.dll"   ; 如果有其他 dll 可以放这里
 
     ; 创建快捷方式
-    CreateDirectory "$SMPROGRAMS\MD Viewer"
-    CreateShortCut "$SMPROGRAMS\MD Viewer\MD Viewer.lnk" "$INSTDIR\md-viewer.exe"
-    CreateShortCut "$DESKTOP\MD Viewer.lnk" "$INSTDIR\md-viewer.exe"
+    CreateDirectory "$SMPROGRAMS\墨页"
+    CreateShortCut "$SMPROGRAMS\墨页\墨页.lnk" "$INSTDIR\Moye.exe"
+    CreateShortCut "$DESKTOP\墨页.lnk" "$INSTDIR\Moye.exe"
 
     ; ==================== 文件关联注册 ====================
-    ${RegisterExtension} "$INSTDIR\md-viewer.exe" ".md" "Markdown Document"
-    ${RegisterExtension} "$INSTDIR\md-viewer.exe" ".markdown" "Markdown Document"
+    ${RegisterExtension} "$INSTDIR\Moye.exe" ".md" "Markdown Document"
+    ${RegisterExtension} "$INSTDIR\Moye.exe" ".markdown" "Markdown Document"
 
     ; 写入注册表信息（用于右键菜单和默认程序）
-    WriteRegStr HKCR "Applications\md-viewer.exe\shell\open\command" "" '"$INSTDIR\md-viewer.exe" "%1"'
+    WriteRegStr HKCR "Applications\Moye.exe\shell\open\command" "" '"$INSTDIR\Moye.exe" "%1"'
     WriteRegStr HKCR ".md" "" "MarkdownFile"
     WriteRegStr HKCR ".markdown" "" "MarkdownFile"
     WriteRegStr HKCR "MarkdownFile" "" "Markdown Document"
-    WriteRegStr HKCR "MarkdownFile\DefaultIcon" "" "$INSTDIR\md-viewer.exe,0"
-    WriteRegStr HKCR "MarkdownFile\shell\open\command" "" '"$INSTDIR\md-viewer.exe" "%1"'
+    WriteRegStr HKCR "MarkdownFile\DefaultIcon" "" "$INSTDIR\Moye.exe,0"
+    WriteRegStr HKCR "MarkdownFile\shell\open\command" "" '"$INSTDIR\Moye.exe" "%1"'
 
     ; 刷新图标缓存
     System::Call 'shell32.dll::SHChangeNotify(i 0x08000000, i 0, i 0, i 0)'
@@ -54,21 +54,21 @@ Section "MainSection" SEC01
 SectionEnd
 
 Section "Uninstall"
-    Delete "$INSTDIR\md-viewer.exe"
+    Delete "$INSTDIR\Moye.exe"
     Delete "$INSTDIR\Uninstall.exe"
 
     RMDir "$INSTDIR"
 
-    Delete "$SMPROGRAMS\MD Viewer\MD Viewer.lnk"
-    RMDir "$SMPROGRAMS\MD Viewer"
-    Delete "$DESKTOP\MD Viewer.lnk"
+    Delete "$SMPROGRAMS\墨页\墨页.lnk"
+    RMDir "$SMPROGRAMS\墨页"
+    Delete "$DESKTOP\墨页.lnk"
 
     ; 注销文件关联
     ${UnRegisterExtension} ".md" "Markdown Document"
     ${UnRegisterExtension} ".markdown" "Markdown Document"
 
     DeleteRegKey HKCR "MarkdownFile"
-    DeleteRegKey HKCR "Applications\md-viewer.exe"
+    DeleteRegKey HKCR "Applications\Moye.exe"
 
     System::Call 'shell32.dll::SHChangeNotify(i 0x08000000, i 0, i 0, i 0)'
 SectionEnd

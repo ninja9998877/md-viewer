@@ -1,6 +1,7 @@
-# MD Viewer · 开源商业化、技术路线与 Roadmap
+# 墨页 Moye · 开源商业化、技术路线与 Roadmap
 
-> 产品一句话：专为 AI 生成的 Markdown 打造的本地阅读器。打开就是预览，文件不离开电脑。  
+> 产品名：**墨页**（英文 **Moye**）。  
+> 一句话：给 AI 写的 Markdown 用的本地阅读器。打开就是预览，像纸一样读，文件不离开电脑。  
 > 仓库现状：GitHub 私有。目标：开源 + 上架 Mac App Store。
 
 本文是内部规划，不是功能清单。先定「靠什么活、不做什么」，再排技术。
@@ -25,7 +26,7 @@
 
 对苹果商店和开源社区，都只讲这一句：
 
-> Agent 写的长文，终于能好好读完。文件不出本机。
+> 墨页：Agent 写的长文，终于能好好读完。文件不出本机。
 
 功能（GFM、Mermaid、公式、目录）是证据，不是卖点。
 
@@ -141,9 +142,9 @@
 
 ### P1 · 能上苹果（约 6–8 周）
 
-目标：Mac 上双击 `.md` 用 MD Viewer 打开，可公证分发。
+目标：Mac 上双击 `.md` 用墨页打开，可公证分发。
 
-- [ ] 苹果开发者账号、Bundle ID 定死（建议 `com.ninja.mdviewer` 一类，不要再用占位 `com.super.md-viewer`）
+- [ ] 苹果开发者账号、Bundle ID 定死（建议 `com.ninja.moye`，不要再用占位 `com.super.md-viewer`）
 - [ ] macOS 签名 + 公证（先 Notary，再商店）
 - [ ] 沙盒、文件权限、拖放 bookmark
 - [ ] macOS 文件关联、Dock、Retina 图标
@@ -181,7 +182,7 @@
 - 多标签
 - iCloud 阅读位置
 - 自定义 CSS
-- `md-viewer path.md` 命令行（SSH / Agent 调用）
+- `moye path.md` 命令行（SSH / Agent 调用）
 
 未过 P0/P1 不做 P4。
 
@@ -204,9 +205,10 @@
 
 ## 6. App Store 文案（先写死，避免做偏）
 
-- **名称：** MD Viewer
-- **副标题：** AI Markdown 本地阅读器
-- **介绍首段：** 把 Agent 写的 Markdown 当成读物打开。默认预览，排版干净，文件只留在这台 Mac 上。
+- **名称：** 墨页
+- **英文名：** Moye
+- **副标题：** 给 AI 写的 Markdown 阅读器
+- **介绍首段：** 把 Agent 写的 Markdown 当成读物打开。默认预览，像纸一样读，文件只留在这台 Mac 上。
 - **关键词方向：** Markdown、阅读、AI、预览、本地、隐私  
   避开：笔记、知识库、编辑器、Obsidian
 - **权限说明：** 仅在你打开或拖入文件时读取该文件

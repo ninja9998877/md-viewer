@@ -15,7 +15,7 @@ await new Promise((r) => setTimeout(r, 800));
 
 const top = await page.evaluate(() => ({
   sections: document.querySelectorAll("[data-section]").length,
-  h1: document.body.innerText.includes("MD Viewer 完整语法测试文件"),
+  h1: document.body.innerText.includes("墨页完整语法测试文件"),
   alerts: document.querySelectorAll(".alert").length,
 }));
 

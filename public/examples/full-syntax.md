@@ -1,10 +1,10 @@
 ---
-title: MD Viewer 完整语法测试
+title: 墨页完整语法测试
 author: Agent
 tags: reading, gfm, mermaid
 ---
 
-# MD Viewer 完整语法测试文件
+# 墨页完整语法测试文件
 
 > **目的**：测试 Markdown 渲染器的完整性、性能和视觉效果  
 > **建议**：用这个文件进行压力测试 + 视觉检查
@@ -83,7 +83,7 @@ tags: reading, gfm, mermaid
 
 ### 图片
 
-![MD Viewer Logo](https://via.placeholder.com/300x80/2563eb/ffffff?text=MD+Viewer)
+![墨页 Moye](https://via.placeholder.com/300x80/2563eb/ffffff?text=Moye)
 
 带链接的图片：
 

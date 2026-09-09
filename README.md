@@ -1,7 +1,7 @@
-# MD Viewer
+# 墨页 Moye
 
-专为 AI 生成的 Markdown 打造的本地阅读器。  
-打开就是预览，好看、干净，文件不离开你的电脑。
+给 AI 写的 Markdown 用的本地阅读器。  
+打开就是预览，像纸一样读，文件不离开你的电脑。
 
 不是又一个编辑器。Agent、ChatGPT、Claude 写出来的长文，默认以阅读排版呈现：提示块、目录、代码折叠、公式和图表。需要改的时候再按 `E`。
 
@@ -29,5 +29,6 @@ Tauri 2 · React 19 · CodeMirror 6 · react-markdown
 
 ## 状态
 
+产品名 **墨页**，英文 **Moye**。窗口和安装包显示「墨页」，可执行文件是 `Moye.exe`。仓库目录暂仍为 `md-viewer`。  
 私有开发中。计划开源（MIT）并上架 Mac App Store。  
 规划见 [ROADMAP.md](./ROADMAP.md)。

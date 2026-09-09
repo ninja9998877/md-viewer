@@ -105,7 +105,7 @@ export default function App() {
   }, [isDark]);
 
   useEffect(() => {
-    const title = `${isDirty ? "• " : ""}${fileName} — MD Viewer`;
+    const title = `${isDirty ? "• " : ""}${fileName} — 墨页`;
     document.title = title;
     if (!isTauri()) return;
     void getCurrentWindow()
@@ -407,7 +407,7 @@ export default function App() {
   const handleAssociate = async () => {
     try {
       await invoke("associate_markdown_files");
-      window.alert("已设为 .md 默认打开方式。若仍用记事本打开，请关掉资源管理器窗口后再双击一次。");
+      window.alert("已把墨页设为 .md 默认打开方式。若仍用记事本打开，请关掉资源管理器窗口后再双击一次。");
     } catch (err) {
       window.alert(`设置失败\n${err}`);
     }
@@ -500,7 +500,7 @@ export default function App() {
           >
             目录
           </button>
-          <button type="button" title="把 .md 设为用本软件打开" onClick={() => void handleAssociate()}>
+          <button type="button" title="把 .md 设为用墨页打开" onClick={() => void handleAssociate()}>
             设为默认
           </button>
           <button type="button" onClick={() => setIsDark((v) => !v)}>

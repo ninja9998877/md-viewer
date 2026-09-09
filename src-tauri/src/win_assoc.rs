@@ -46,7 +46,7 @@ pub fn associate_markdown() -> Result<(), String> {
     reg_add(
         r"HKCU\Software\Classes\MDViewer.markdown\shell\open",
         None,
-        "用 MD Viewer 打开",
+        "用墨页打开",
     )?;
     reg_add(
         r"HKCU\Software\Classes\MDViewer.markdown\shell\open\command",

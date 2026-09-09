@@ -401,15 +401,15 @@ Function AssocPageCreate
   ${If} $AssociateMd == ""
     StrCpy $AssociateMd 1
   ${EndIf}
-  !insertmacro MUI_HEADER_TEXT "文件关联" "选择是否用 MD Viewer 打开 Markdown 文件"
+  !insertmacro MUI_HEADER_TEXT "文件关联" "选择是否用墨页打开 Markdown 文件"
   nsDialogs::Create 1018
   Pop $0
   ${If} $(^RTL) = 1
     nsDialogs::SetRTL $(^RTL)
   ${EndIf}
-  ${NSD_CreateLabel} 0 0 100% 36u "安装完成后，可以双击 .md / .markdown 文件用 MD Viewer 打开。$\r$\n$\r$\n如果你已经用 Notepad++ 或其他软件打开 Markdown，取消勾选即可保持现状。"
+  ${NSD_CreateLabel} 0 0 100% 36u "安装完成后，可以双击 .md / .markdown 文件用墨页打开。$\r$\n$\r$\n如果你已经用 Notepad++ 或其他软件打开 Markdown，取消勾选即可保持现状。"
   Pop $0
-  ${NSD_CreateCheckbox} 0 52u 100% 12u "将 MD Viewer 设为 Markdown 文件的默认打开方式"
+  ${NSD_CreateCheckbox} 0 52u 100% 12u "将墨页设为 Markdown 文件的默认打开方式"
   Pop $AssociateMdCheckbox
   ${If} $AssociateMd == 1
     ${NSD_Check} $AssociateMdCheckbox
