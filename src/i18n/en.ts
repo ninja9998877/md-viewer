@@ -12,7 +12,7 @@ export const en = {
   shareFailed: "Could not share\n{message}",
   shareUnavailable: "This build cannot share, and the clipboard is unreachable",
   opening: "Opening…",
-  openTimeout: "Timed out reading the file. It may still be in the cloud — try again.",
+  openTimeout: "Timed out reading the file — try again.",
   openInterrupted:
     "The last open was interrupted (Android reclaimed Moye). Please pick the file again.",
   // Attribution appended to the end of a shared document. Deliberately linkless:

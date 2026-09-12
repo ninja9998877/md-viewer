@@ -12,7 +12,7 @@ export const zh = {
   shareFailed: "分享失败\n{message}",
   shareUnavailable: "这个环境既不能分享，也写不进剪贴板",
   opening: "正在打开…",
-  openTimeout: "读取超时了。文件可能还在云端，请再试一次",
+  openTimeout: "读取超时了，请再试一次",
   openInterrupted: "上次打开文件被系统中断了（墨页被系统回收），请重新选择一次",
   // 分享出去时附在正文末尾的署名。刻意不放链接：墨页还没有官网，
   // 桌面仓库也尚未开源，放上去只会是死链。用 emoji 当图标是为了不依赖

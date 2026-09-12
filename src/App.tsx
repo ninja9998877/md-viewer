@@ -45,7 +45,7 @@ function readTheme(): boolean {
 }
 
 /** How long to wait for a document before telling the reader something is wrong.
- *  Generous on purpose: a slow disk or a network path is not an error. */
+ *  Generous on purpose: a slow disk is not an error. */
 const READ_TIMEOUT_MS = 20_000;
 
 export default function App() {

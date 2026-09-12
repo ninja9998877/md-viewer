@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import type { Components } from "react-markdown";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { isTauri } from "../lib/platform";
 import { dataLineFromProps } from "../lib/source-line";
 import { resolveImageSrc } from "../lib/resolve-image";
 import { AlertBlock } from "./AlertBlock";
@@ -93,6 +95,23 @@ export function createMarkdownComponents(
           href={href}
           target={external ? "_blank" : undefined}
           rel={external ? "noreferrer noopener" : undefined}
+          onClick={
+            external
+              ? (event) => {
+                  // Hand the URL to the system browser rather than letting the
+                  // WebView navigate to it. Moye is local-only and ships
+                  // without the INTERNET permission, so an in-app navigation
+                  // could only fail; the browser is a different app and does
+                  // its own networking. In a plain browser (web dev) leave the
+                  // click alone.
+                  if (!isTauri()) return;
+                  event.preventDefault();
+                  void openUrl(href as string).catch(() => {
+                    /* no browser installed — nothing useful to say */
+                  });
+                }
+              : undefined
+          }
         >
           {children}
         </a>

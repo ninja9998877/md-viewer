@@ -27,11 +27,12 @@ export class TimeoutError extends Error {
 /**
  * Reject once `ms` has passed without `promise` settling.
  *
- * A document opened through a cloud provider's `content://` URI has to be
- * fetched before its first byte arrives. The native read reports no progress and
- * cannot be cancelled, so without a deadline the reader simply keeps showing
- * whatever was on screen before — which the user rightly reads as "it ignored my
- * tap". The read itself is left running; only the UI gives up waiting.
+ * Opening a document is a cross-process call: a `content://` URI is served by
+ * whichever app owns the file, so Moye is waiting on a provider it does not
+ * control, and the native read reports no progress and cannot be cancelled.
+ * Without a deadline the reader simply keeps showing whatever was on screen
+ * before, which the user rightly reads as "it ignored my tap". The read itself
+ * is left running; only the UI gives up waiting.
  */
 export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
