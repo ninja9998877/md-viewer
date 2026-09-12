@@ -15,6 +15,7 @@ export const en = {
   // would just be a dead end. The emoji stands in for an icon so nothing has to
   // be hosted — every Markdown renderer can show it.
   shareFooter: "> 📖 **Moye** — a local-first Markdown reader",
+  snapshotOpened: "The original is unreachable — opened the local copy",
   unsaved: "Unsaved",
   unsavedDoc: "Untitled document",
   untitled: "Untitled",

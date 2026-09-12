@@ -14,7 +14,14 @@ import { TocSidebar } from "./components/TocSidebar";
 import { AppMenu } from "./components/AppMenu";
 import { parseDocument } from "./lib/markdown-sections";
 import { applyReaderSettings, loadReaderSettings, saveReaderSettings, type ReaderSettings } from "./lib/reader-settings";
-import { loadRecent, rememberRecent, type RecentFile } from "./lib/recent-files";
+import {
+  forgetRecent,
+  loadRecent,
+  loadSnapshot,
+  rememberRecent,
+  saveSnapshot,
+  type RecentFile,
+} from "./lib/recent-files";
 import { shareDocument } from "./lib/share";
 import {
   countLines,
@@ -152,9 +159,15 @@ export default function App() {
     async (path: string, mode: ViewMode = "preview") => {
       const text = await readMarkdownFile(path);
       loadText(text, path, mode);
-      setRecent(rememberRecent(path));
+      const label = fileNameOf(path, t.untitled);
+      setRecent(rememberRecent(path, label));
+      // A no-op for plain paths, which is every path on desktop — see
+      // `isDurablePath`. On mobile the grant behind a `content://` or a
+      // security-scoped `file://` dies with this process, so the copy is the
+      // only thing that will let a later launch reopen this document.
+      saveSnapshot(path, label, text);
     },
-    [loadText],
+    [loadText, t.untitled],
   );
 
   useEffect(() => {
@@ -601,7 +614,24 @@ export default function App() {
                 onRecent={(path) => {
                   setMenuOpen(false);
                   if (!confirmDiscard()) return;
-                  void loadPath(path, "preview");
+                  void loadPath(path, "preview").catch((err) => {
+                    // The stored path is unreachable — the file picker's grant
+                    // does not survive the process that received it, so an entry
+                    // carried over from an earlier launch can never reopen. Fall
+                    // back to the copy taken when it was first read; if there is
+                    // none, say so and drop the entry instead of leaving a menu
+                    // item that silently does nothing.
+                    const snap = loadSnapshot(path);
+                    if (snap) {
+                      loadText(snap.text, path, "preview");
+                      setRecent(rememberRecent(path, snap.name));
+                      setToast(t.snapshotOpened);
+                      return;
+                    }
+                    const message = err instanceof Error ? err.message : String(err);
+                    setRecent(forgetRecent(path));
+                    window.alert(fmt(t.openFailed, { message }));
+                  });
                 }}
                 onToggleToc={() => {
                   setMenuOpen(false);

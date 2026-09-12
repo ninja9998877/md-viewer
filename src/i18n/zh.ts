@@ -14,6 +14,7 @@ export const zh = {
   // 桌面仓库也尚未开源，放上去只会是死链。用 emoji 当图标是为了不依赖
   // 任何托管资源 —— 任何 Markdown 渲染器都能显示。以后有官网了只改这一行。
   shareFooter: "> 📖 **墨页 Moye** — 本地优先的 Markdown 阅读器",
+  snapshotOpened: "原文件已失效，已打开本地快照",
   unsaved: "未保存",
   unsavedDoc: "未保存的文档",
   untitled: "未命名文档",
