@@ -860,6 +860,10 @@ button:active {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Flex items default to `min-width: auto`, which refuses to shrink below
+     their content — so one long value pushes its siblings off the bar instead
+     of ellipsising. A deep path does exactly that. */
+  min-width: 0;
 }
 
 .reader::-webkit-scrollbar,

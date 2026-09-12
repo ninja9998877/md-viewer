@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { EditorView, type ViewUpdate } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import { EditorState } from "@codemirror/state";
@@ -54,7 +54,14 @@ function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
-export function MarkdownEditor({ value, onChange, isDark, onScroll }: MarkdownEditorProps) {
+// Memoized: the editor is a CodeMirror instance and has no business re-rendering
+// because the menu opened or the font size nudged.
+export const MarkdownEditor = memo(function MarkdownEditor({
+  value,
+  onChange,
+  isDark,
+  onScroll,
+}: MarkdownEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
@@ -128,4 +135,4 @@ export function MarkdownEditor({ value, onChange, isDark, onScroll }: MarkdownEd
   }, [value]);
 
   return <div ref={containerRef} className="editor-host" />;
-}
+});

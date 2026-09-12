@@ -77,9 +77,26 @@ function visibleWindow(scrollTop: number, viewport: number, heights: number[], o
   return { start, end, padTop, padBottom };
 }
 
+/**
+ * Where the reader currently is, expressed as "this element sits this many
+ * pixels from the top of the scroll container".
+ *
+ * Anchoring on an element id rather than a pixel offset is what makes it
+ * survive a reflow: when the viewport changes (fold / unfold / window resize)
+ * every section re-wraps and all the old offsets are meaningless, but the
+ * heading ids are stable, so we can put the same line back under the reader's
+ * eye. Apple calls this out as the thing that most often breaks on foldables.
+ */
+export interface PreviewAnchor {
+  id: string;
+  offset: number;
+}
+
 export interface MarkdownPreviewHandle {
   scrollToHeading: (id: string) => void;
   syncToEditor: (target: PreviewScrollTarget) => void;
+  captureAnchor: () => PreviewAnchor | null;
+  restoreAnchor: (anchor: PreviewAnchor) => void;
 }
 
 interface MarkdownPreviewProps {
@@ -89,7 +106,7 @@ interface MarkdownPreviewProps {
   scrollParentRef: RefObject<HTMLElement | null>;
 }
 
-export const MarkdownPreview = forwardRef<MarkdownPreviewHandle, MarkdownPreviewProps>(
+const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewProps>(
   function MarkdownPreview({ content, isDark, filePath, scrollParentRef }, ref) {
     const { locale } = useI18n();
     const parsed = useMemo(() => parseDocument(content), [content]);
@@ -159,7 +176,13 @@ export const MarkdownPreview = forwardRef<MarkdownPreviewHandle, MarkdownPreview
         if (key) heightsByKey.current.set(key, nextHeight);
         const root = scrollParentRef.current;
         if (root && delta && !syncingRef.current) {
-          if (node.getBoundingClientRect().top < root.getBoundingClientRect().top + 8) {
+          // Never compensate while parked at the end of the document. There
+          // scrollTop is clamped, so the write cannot move the reader — but it
+          // still knocks against the clamp and re-schedules measurement, and
+          // any resulting change in scrollHeight makes the view spring back off
+          // the bottom. That feedback is what showed up as a bounce loop.
+          const atEnd = root.scrollHeight - root.scrollTop - root.clientHeight < 4;
+          if (!atEnd && node.getBoundingClientRect().top < root.getBoundingClientRect().top + 8) {
             root.scrollTop += delta;
           }
         }
@@ -251,6 +274,33 @@ export const MarkdownPreview = forwardRef<MarkdownPreviewHandle, MarkdownPreview
     }, [range, parsed.sections, scrollParentRef]);
 
     useImperativeHandle(ref, () => ({
+      captureAnchor: (): PreviewAnchor | null => {
+        const root = scrollParentRef.current;
+        if (!root) return null;
+        const nodes = [...root.querySelectorAll<HTMLElement>(".md-body [id]")];
+        if (nodes.length === 0) return null;
+        const rootTop = root.getBoundingClientRect().top;
+        // The last heading at or above the viewport top is the one the reader is
+        // currently inside; everything after it is still ahead of them.
+        let anchor: PreviewAnchor | null = null;
+        for (const el of nodes) {
+          const top = el.getBoundingClientRect().top - rootTop;
+          if (top > 1) break;
+          anchor = { id: el.id, offset: top };
+        }
+        const first = nodes[0];
+        return anchor ?? { id: first.id, offset: first.getBoundingClientRect().top - rootTop };
+      },
+      restoreAnchor: (anchor: PreviewAnchor) => {
+        const root = scrollParentRef.current;
+        if (!root) return;
+        // The heading may be virtualized out of the DOM; nothing sensible to do
+        // then, and the next capture will simply pick a different anchor.
+        const el = root.querySelector<HTMLElement>(`#${CSS.escape(anchor.id)}`);
+        if (!el) return;
+        const top = el.getBoundingClientRect().top - root.getBoundingClientRect().top;
+        root.scrollTop += top - anchor.offset;
+      },
       scrollToHeading: (id: string) => {
         const index = parsed.sections.findIndex((section) => section.headingIds.includes(id));
         if (index < 0) return;
@@ -321,6 +371,11 @@ export const MarkdownPreview = forwardRef<MarkdownPreviewHandle, MarkdownPreview
     );
   },
 );
+
+// Without memo every App render — opening the menu, nudging the font size,
+// toggling the theme — walks the whole document tree again. Contents only
+// change on a real content edit, so this is pure win.
+export const MarkdownPreview = memo(MarkdownPreviewInner);
 
 const SectionMarkdown = memo(
   function SectionMarkdown({

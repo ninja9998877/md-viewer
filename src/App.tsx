@@ -5,7 +5,11 @@ import { readMarkdownFile, writeMarkdownFile } from "./lib/fs";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { MarkdownEditor, type EditorScrollInfo } from "./components/MarkdownEditor";
-import { MarkdownPreview, type MarkdownPreviewHandle } from "./components/MarkdownPreview";
+import {
+  MarkdownPreview,
+  type MarkdownPreviewHandle,
+  type PreviewAnchor,
+} from "./components/MarkdownPreview";
 import { TocSidebar } from "./components/TocSidebar";
 import { AppMenu } from "./components/AppMenu";
 import { parseDocument } from "./lib/markdown-sections";
@@ -310,6 +314,37 @@ export default function App() {
     if (!isTauri()) return;
     void invoke("watch_markdown", { path: filePath });
   }, [filePath]);
+
+  // Keep the reader's place across a viewport change — resizing the window,
+  // dragging it to a display with different scaling, or a foldable changing
+  // posture. Without this the text re-wraps and the same scrollTop lands
+  // somewhere the reader has never been.
+  useEffect(() => {
+    let anchor: PreviewAnchor | null = null;
+    let debounce = 0;
+
+    const onResize = () => {
+      // Capture once per burst, while the pre-reflow layout is still on screen.
+      if (debounce === 0) anchor = previewRef.current?.captureAnchor() ?? null;
+      window.clearTimeout(debounce);
+      debounce = window.setTimeout(() => {
+        debounce = 0;
+        const captured = anchor;
+        anchor = null;
+        if (!captured) return;
+        // Section heights are re-measured asynchronously after a reflow, so
+        // restore now and once more after those measurements land.
+        previewRef.current?.restoreAnchor(captured);
+        window.setTimeout(() => previewRef.current?.restoreAnchor(captured), 260);
+      }, 180);
+    };
+
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.clearTimeout(debounce);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isTauri()) return;

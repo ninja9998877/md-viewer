@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { TocItem } from "../lib/markdown";
 import { useI18n } from "../i18n";
 
@@ -7,7 +8,9 @@ interface TocSidebarProps {
   onJump: (id: string) => void;
 }
 
-export function TocSidebar({ items, activeId, onJump }: TocSidebarProps) {
+// Memoized so unrelated App renders (menu, theme, font size) don't rebuild the
+// heading list.
+export const TocSidebar = memo(function TocSidebar({ items, activeId, onJump }: TocSidebarProps) {
   const { t } = useI18n();
   if (items.length === 0) {
     return (
@@ -37,4 +40,4 @@ export function TocSidebar({ items, activeId, onJump }: TocSidebarProps) {
       </ol>
     </nav>
   );
-}
+});
