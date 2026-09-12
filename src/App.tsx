@@ -15,6 +15,7 @@ import { AppMenu } from "./components/AppMenu";
 import { parseDocument } from "./lib/markdown-sections";
 import { applyReaderSettings, loadReaderSettings, saveReaderSettings, type ReaderSettings } from "./lib/reader-settings";
 import { loadRecent, rememberRecent, type RecentFile } from "./lib/recent-files";
+import { shareDocument } from "./lib/share";
 import {
   countLines,
   downloadText,
@@ -529,6 +530,23 @@ export default function App() {
     }
   };
 
+  const handleShare = async () => {
+    // Read through the ref, not the closed-over `content`: this handler is
+    // created on every render but the value it needs is whatever is on screen
+    // right now, including edits made since the last render.
+    const markdown = `${contentRef.current}\n\n---\n\n${t.shareFooter}\n`;
+    const name = fileNameOf(filePathRef.current, t.untitled);
+    try {
+      const outcome = await shareDocument({ title: name, markdown, filename: name });
+      if (outcome === "copied") setToast(t.shareCopied);
+      else if (outcome === "downloaded") setToast(t.shareDownloaded);
+      // "shared" needs no toast — the share sheet was its own feedback.
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      window.alert(fmt(t.shareFailed, { message }));
+    }
+  };
+
   const enterEdit = () => {
     followEditor.current = true;
     setViewMode("split");
@@ -608,6 +626,14 @@ export default function App() {
         </div>
 
         <div className="chrome__right">
+          <button
+            type="button"
+            className="chrome__ghost"
+            title={t.shareHint}
+            onClick={() => void handleShare()}
+          >
+            {t.share}
+          </button>
           {viewMode === "preview" ? (
             <button type="button" className="chrome__ghost" onClick={enterEdit}>
               {t.edit}

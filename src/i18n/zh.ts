@@ -5,6 +5,15 @@ export const zh = {
   recent: "最近",
   newFile: "新建",
   save: "保存",
+  share: "分享",
+  shareHint: "分享这篇文档",
+  shareCopied: "已复制到剪贴板",
+  shareDownloaded: "已导出为新文件",
+  shareFailed: "分享失败\n{message}",
+  // 分享出去时附在正文末尾的署名。刻意不放链接：墨页还没有官网，
+  // 桌面仓库也尚未开源，放上去只会是死链。用 emoji 当图标是为了不依赖
+  // 任何托管资源 —— 任何 Markdown 渲染器都能显示。以后有官网了只改这一行。
+  shareFooter: "> 📖 **墨页 Moye** — 本地优先的 Markdown 阅读器",
   unsaved: "未保存",
   unsavedDoc: "未保存的文档",
   untitled: "未命名文档",

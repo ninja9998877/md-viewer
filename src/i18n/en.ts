@@ -5,6 +5,16 @@ export const en = {
   recent: "Recent",
   newFile: "New",
   save: "Save",
+  share: "Share",
+  shareHint: "Share this document",
+  shareCopied: "Copied to clipboard",
+  shareDownloaded: "Saved as a new file",
+  shareFailed: "Could not share\n{message}",
+  // Attribution appended to the end of a shared document. Deliberately linkless:
+  // there is no website yet and the desktop repo is not public, so a URL here
+  // would just be a dead end. The emoji stands in for an icon so nothing has to
+  // be hosted — every Markdown renderer can show it.
+  shareFooter: "> 📖 **Moye** — a local-first Markdown reader",
   unsaved: "Unsaved",
   unsavedDoc: "Untitled document",
   untitled: "Untitled",
