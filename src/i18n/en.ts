@@ -15,11 +15,14 @@ export const en = {
   openTimeout: "Timed out reading the file — try again.",
   openInterrupted:
     "The last open was interrupted (Android reclaimed Moye). Please pick the file again.",
-  // Attribution appended to the end of a shared document. Deliberately linkless:
-  // there is no website yet and the desktop repo is not public, so a URL here
-  // would just be a dead end. The emoji stands in for an icon so nothing has to
-  // be hosted — every Markdown renderer can show it.
-  shareFooter: "> 📖 **Moye** — a local-first Markdown reader",
+  // Attribution appended to the end of a shared document: one line carrying both
+  // selling points — written for Agents, and purely local with no networking.
+  // The second half is not marketing copy: the APK strips the INTERNET
+  // permission, see scripts/patch-android-manifest.py.
+  // Deliberately linkless: there is no website yet and the desktop repo is not
+  // public, so a URL here would just be a dead end. The emoji stands in for an
+  // icon so nothing has to be hosted — every Markdown renderer can show it.
+  shareFooter: "> 📖 **Moye** — a Markdown reader built for Agents · fully local, no network",
   snapshotOpened: "The original is unreachable — opened the local copy",
   unsaved: "Unsaved",
   unsavedDoc: "Untitled document",
