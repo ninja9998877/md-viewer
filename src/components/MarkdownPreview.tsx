@@ -176,13 +176,18 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
         if (key) heightsByKey.current.set(key, nextHeight);
         const root = scrollParentRef.current;
         if (root && delta && !syncingRef.current) {
-          // Never compensate while parked at the end of the document. There
-          // scrollTop is clamped, so the write cannot move the reader — but it
-          // still knocks against the clamp and re-schedules measurement, and
-          // any resulting change in scrollHeight makes the view spring back off
-          // the bottom. That feedback is what showed up as a bounce loop.
-          const atEnd = root.scrollHeight - root.scrollTop - root.clientHeight < 4;
-          if (!atEnd && node.getBoundingClientRect().top < root.getBoundingClientRect().top + 8) {
+          // Compensate unconditionally — including at the very end. Sections are
+          // placed using an estimated height until they render, so a section
+          // above the viewport being measured shorter than its estimate pulls
+          // everything up. Applying `delta` puts the reader back on the same
+          // content: when the shrunk section sits above the viewport, the new
+          // maximum scroll offset drops by exactly that amount, so the write
+          // lands on it rather than being clamped away.
+          //
+          // An earlier attempt skipped this at the end on the theory that the
+          // write would always be clamped there. That was wrong, and it turned
+          // the correction into a visible upward jump.
+          if (node.getBoundingClientRect().top < root.getBoundingClientRect().top + 8) {
             root.scrollTop += delta;
           }
         }
