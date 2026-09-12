@@ -641,6 +641,7 @@ export default function App() {
                     window.alert(fmt(t.openFailed, { message }));
                   });
                 }}
+                onForgetRecent={(path) => setRecent(forgetRecent(path))}
                 onToggleToc={() => {
                   setMenuOpen(false);
                   setTocOpen((v) => !v);

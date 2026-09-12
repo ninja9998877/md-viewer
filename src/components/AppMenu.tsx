@@ -1,6 +1,11 @@
+import { useEffect, useRef, useState } from "react";
 import type { Locale, Messages } from "../i18n";
 import type { PaperWidth, ReaderSettings } from "../lib/reader-settings";
 import type { RecentFile } from "../lib/recent-files";
+
+/** How long a press must last before it turns into a delete prompt. Long enough
+ *  not to fire while scrolling the list, short enough not to feel stuck. */
+const LONG_PRESS_MS = 500;
 
 interface AppMenuProps {
   t: Messages;
@@ -15,6 +20,7 @@ interface AppMenuProps {
   onNew: () => void;
   onSave: () => void;
   onRecent: (path: string) => void;
+  onForgetRecent: (path: string) => void;
   onToggleToc: () => void;
   onFont: (next: number) => void;
   onPaper: (paper: PaperWidth) => void;
@@ -36,6 +42,7 @@ export function AppMenu({
   onNew,
   onSave,
   onRecent,
+  onForgetRecent,
   onToggleToc,
   onFont,
   onPaper,
@@ -43,6 +50,31 @@ export function AppMenu({
   onLocale,
   onAssociate,
 }: AppMenuProps) {
+  // Which recent entry is currently asking to be deleted. A long press (or a
+  // right-click) arms it, and the row then swaps to a confirmation instead of
+  // deleting outright: dropping an entry also drops the local snapshot, which
+  // for a `content://` document may be the only readable copy left.
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const pressTimer = useRef(0);
+  // Set once a press has been consumed by the long-press handler, so letting go
+  // does not also open the document underneath.
+  const consumed = useRef(false);
+
+  useEffect(() => () => window.clearTimeout(pressTimer.current), []);
+
+  const armDelete = (path: string) => {
+    consumed.current = true;
+    setPendingDelete(path);
+  };
+
+  const startPress = (path: string) => {
+    consumed.current = false;
+    window.clearTimeout(pressTimer.current);
+    pressTimer.current = window.setTimeout(() => armDelete(path), LONG_PRESS_MS);
+  };
+
+  const cancelPress = () => window.clearTimeout(pressTimer.current);
+
   return (
     <div className="app-menu" role="menu">
       <div className="app-menu__group">
@@ -62,19 +94,65 @@ export function AppMenu({
       {recent.length > 0 ? (
         <>
           <div className="app-menu__sep" />
-          <div className="app-menu__label">{t.recent}</div>
+          <div className="app-menu__label">
+            {t.recent}
+            <span className="app-menu__hint">{t.forgetHint}</span>
+          </div>
           <div className="app-menu__group">
-            {recent.slice(0, 8).map((item) => (
-              <button
-                key={item.path}
-                type="button"
-                role="menuitem"
-                title={item.path}
-                onClick={() => onRecent(item.path)}
-              >
-                {item.name}
-              </button>
-            ))}
+            {recent.slice(0, 8).map((item) =>
+              pendingDelete === item.path ? (
+                <div key={item.path} className="app-menu__confirm">
+                  <span className="app-menu__confirm-text">{t.forgetConfirm}</span>
+                  <div className="app-menu__pills">
+                    <button
+                      type="button"
+                      className="is-danger"
+                      onClick={() => {
+                        setPendingDelete(null);
+                        onForgetRecent(item.path);
+                      }}
+                    >
+                      {t.forget}
+                    </button>
+                    <button type="button" onClick={() => setPendingDelete(null)}>
+                      {t.cancel}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  key={item.path}
+                  type="button"
+                  role="menuitem"
+                  className="app-menu__recent"
+                  title={item.path}
+                  onPointerDown={() => startPress(item.path)}
+                  // A press that turns into a scroll fires pointercancel, and one
+                  // that slides off the row fires pointerleave — both must drop
+                  // the timer, or scrolling the list would start deleting things.
+                  onPointerUp={cancelPress}
+                  onPointerLeave={cancelPress}
+                  onPointerCancel={cancelPress}
+                  onContextMenu={(event) => {
+                    // Right-click on desktop, and Android's own long-press menu
+                    // on touch: both should arm the prompt rather than open the
+                    // platform menu.
+                    event.preventDefault();
+                    cancelPress();
+                    armDelete(item.path);
+                  }}
+                  onClick={() => {
+                    if (consumed.current) {
+                      consumed.current = false;
+                      return;
+                    }
+                    onRecent(item.path);
+                  }}
+                >
+                  {item.name}
+                </button>
+              ),
+            )}
           </div>
         </>
       ) : null}
