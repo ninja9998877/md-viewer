@@ -57,6 +57,24 @@ fn launch_markdown() -> Option<String> {
     std::env::args().skip(1).find(|path| is_markdown_path(path))
 }
 
+/// Paths handed to us at launch, held until the webview asks for them.
+///
+/// The frontend cannot be listening the instant the process starts, so pushing
+/// the path with an event means guessing when the webview is ready — and a
+/// wrong guess drops the file, leaving the user on the welcome screen. Queue it
+/// instead and let the frontend drain the queue once its JS is running.
+fn launched_files() -> &'static Mutex<Vec<String>> {
+    static STATE: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+    STATE.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+fn remember_launch(path: String) {
+    launched_files()
+        .lock()
+        .unwrap_or_else(|err| err.into_inner())
+        .push(path);
+}
+
 #[tauri::command]
 fn read_markdown(path: String) -> Result<String, String> {
     if !is_markdown_path(&path) {
@@ -99,6 +117,12 @@ fn associate_markdown_files() -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+fn take_launch_files() -> Vec<String> {
+    let mut files = launched_files().lock().unwrap_or_else(|err| err.into_inner());
+    std::mem::take(&mut *files)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -109,7 +133,8 @@ pub fn run() {
             read_markdown,
             write_markdown,
             watch_markdown,
-            associate_markdown_files
+            associate_markdown_files,
+            take_launch_files
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -135,12 +160,9 @@ pub fn run() {
                 };
                 let _ = handle.emit("file-changed", changed);
             });
+            // Queue only: the frontend drains this via `take_launch_files`.
             if let Some(path) = launch_markdown() {
-                let handle = app.handle().clone();
-                std::thread::spawn(move || {
-                    std::thread::sleep(Duration::from_millis(400));
-                    let _ = handle.emit("open-file", path);
-                });
+                remember_launch(path);
             }
             Ok(())
         })

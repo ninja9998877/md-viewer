@@ -265,6 +265,7 @@ export default function App() {
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;
+    let unlisten: (() => void) | undefined;
 
     const openLaunch = async (path: string) => {
       if (lastLaunchRef.current === path) return;
@@ -276,13 +277,32 @@ export default function App() {
       }
     };
 
-    const unlisten = listen<string>("open-file", (event) => {
-      if (!cancelled) void openLaunch(event.payload);
-    });
+    void (async () => {
+      // Register the listener *before* draining the queue. Reversed, an event
+      // arriving between the two would be dropped and the file never opened.
+      const stop = await listen<string>("open-file", (event) => {
+        if (!cancelled) void openLaunch(event.payload);
+      });
+      if (cancelled) {
+        stop();
+        return;
+      }
+      unlisten = stop;
+      try {
+        // Backstop for the launch path: the backend queues files passed on the
+        // command line instead of racing the webview with an event.
+        const paths = await invoke<string[]>("take_launch_files");
+        if (cancelled) return;
+        const path = paths.filter(Boolean).pop();
+        if (path) void openLaunch(path);
+      } catch (err) {
+        console.error("Failed to read launch files:", err);
+      }
+    })();
 
     return () => {
       cancelled = true;
-      void unlisten.then((fn) => fn());
+      unlisten?.();
     };
   }, [loadPath]);
 
