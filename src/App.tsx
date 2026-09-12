@@ -56,6 +56,8 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>("preview");
   const [isDark, setIsDark] = useState(readTheme);
   const [tocOpen, setTocOpen] = useState(false);
+  // Read by the keydown listener, which must not rebind on every toggle.
+  const tocOpenRef = useRef(false);
   const [activeHeading, setActiveHeading] = useState("");
   const [previewContent, setPreviewContent] = useState(content);
 
@@ -92,6 +94,7 @@ export default function App() {
   const menuWrapRef = useRef<HTMLDivElement>(null);
   const menuOpenRef = useRef(false);
   menuOpenRef.current = menuOpen;
+  tocOpenRef.current = tocOpen;
   const [reader, setReader] = useState<ReaderSettings>(() => loadReaderSettings());
   const lineCount = useMemo(() => countLines(content), [content]);
   const fileName = fileNameOf(filePath, t.untitled);
@@ -426,6 +429,12 @@ export default function App() {
           setMenuOpen(false);
           return;
         }
+        // The contents list is the other thing that can cover the page, so
+        // Escape should dismiss whatever is on top of it.
+        if (tocOpenRef.current) {
+          setTocOpen(false);
+          return;
+        }
         if (viewModeRef.current === "split") {
           setViewMode("preview");
         }
@@ -706,6 +715,10 @@ export default function App() {
           ref={readerRef}
           onScroll={onReaderScroll}
           onDoubleClick={onPreviewDoubleClick}
+          // Clicking the document dismisses the contents list. It is a sibling
+          // with a higher z-index, so a click that lands on the list itself
+          // never reaches this handler — no "is this inside the list?" check.
+          onClick={tocOpen ? () => setTocOpen(false) : undefined}
         >
           <article className="paper">
             <MarkdownPreview
