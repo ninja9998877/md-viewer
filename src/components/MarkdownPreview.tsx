@@ -51,6 +51,25 @@ function estimateHeight(section: DocSection): number {
   return Math.min(2200, Math.max(140, lines * 24));
 }
 
+/**
+ * True while a section still contains a placeholder that has not settled.
+ *
+ * A Mermaid diagram renders into an empty host and only fills in after an async
+ * pass, and an `<img>` reports a near-zero height until it loads. Measuring
+ * either one records a height far below the truth, which overwrites the good
+ * cached height, collapses the section — and because the virtual list unmounts
+ * and remounts sections as the window moves, it collapses all over again every
+ * time the reader scrolls back. That is the "bounces forever at the bottom"
+ * report, and it is why it only happens in documents with certain blocks.
+ */
+function isPending(node: HTMLElement): boolean {
+  if (node.querySelector("[data-pending]")) return true;
+  for (const img of node.querySelectorAll("img")) {
+    if (!img.complete) return true;
+  }
+  return false;
+}
+
 function visibleWindow(scrollTop: number, viewport: number, heights: number[], overscan: number) {
   let acc = 0;
   let start = 0;
@@ -176,18 +195,22 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
         if (key) heightsByKey.current.set(key, nextHeight);
         const root = scrollParentRef.current;
         if (root && delta && !syncingRef.current) {
-          // Compensate unconditionally — including at the very end. Sections are
-          // placed using an estimated height until they render, so a section
-          // above the viewport being measured shorter than its estimate pulls
-          // everything up. Applying `delta` puts the reader back on the same
-          // content: when the shrunk section sits above the viewport, the new
-          // maximum scroll offset drops by exactly that amount, so the write
-          // lands on it rather than being clamped away.
-          //
-          // An earlier attempt skipped this at the end on the theory that the
-          // write would always be clamped there. That was wrong, and it turned
-          // the correction into a visible upward jump.
-          if (node.getBoundingClientRect().top < root.getBoundingClientRect().top + 8) {
+          // At the end there is nothing below the reader to hold their place, so
+          // every write to `scrollTop` lands on the maximum — and the very
+          // measurement that triggered it has just moved that maximum.
+          // Compensating per section does not converge there: each write shifts
+          // the window, the window renders and measures a different set of
+          // sections, and those measurements shift it again. The reader sees the
+          // list bounce at the bottom for as long as the document keeps handing
+          // us new measurements. Pinning to the end is the same intent ("stay on
+          // this content") written as a fixed point instead of a chase.
+          const atEnd = root.scrollTop + root.clientHeight >= root.scrollHeight - 4;
+          if (atEnd) {
+            root.scrollTop = Math.max(0, root.scrollHeight - root.clientHeight);
+          } else if (node.getBoundingClientRect().top < root.getBoundingClientRect().top + 8) {
+            // A section above the viewport was measured differently from its
+            // estimate, which pulls everything below it up or down. Applying
+            // `delta` puts the reader back on the same content.
             root.scrollTop += delta;
           }
         }
@@ -220,13 +243,17 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
       const nodes = [...list.querySelectorAll<HTMLElement>("[data-section-index]")];
       for (const node of nodes) {
         const index = Number(node.dataset.sectionIndex);
-        if (Number.isFinite(index)) applyHeight(node, index, node.offsetHeight);
+        if (Number.isFinite(index) && !isPending(node)) {
+          applyHeight(node, index, node.offsetHeight);
+        }
       }
       const ro = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const el = entry.target as HTMLElement;
           const index = Number(el.dataset.sectionIndex);
-          if (Number.isFinite(index)) applyHeight(el, index, el.offsetHeight);
+          if (Number.isFinite(index) && !isPending(el)) {
+            applyHeight(el, index, el.offsetHeight);
+          }
         }
       });
       nodes.forEach((node) => ro.observe(node));

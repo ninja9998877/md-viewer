@@ -42,7 +42,14 @@ export function MermaidBlock({ code, isDark }: { code: string; isDark: boolean }
         ensureMermaid(isDark);
         const id = `mmd-${reactId}-${Math.random().toString(36).slice(2, 8)}`;
         const { svg } = await mermaid.render(id, code);
-        if (!cancelled && hostRef.current) hostRef.current.innerHTML = svg;
+        if (!cancelled && hostRef.current) {
+          hostRef.current.innerHTML = svg;
+          // Drop the pending marker on the node itself rather than through
+          // state: the preview measures sections in a layout effect, which runs
+          // before a state update could reach the DOM, and React never
+          // re-renders this attribute otherwise (it is static in the JSX below).
+          hostRef.current.removeAttribute("data-pending");
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : String(err));
@@ -66,7 +73,10 @@ export function MermaidBlock({ code, isDark }: { code: string; isDark: boolean }
     );
   }
 
-  return <div className="mermaid-card" ref={hostRef} />;
+  // `data-pending` tells the virtual list in MarkdownPreview that this
+  // section's height is still a placeholder, so its near-zero measurement must
+  // not be recorded as the real one. See `isPending` there.
+  return <div className="mermaid-card" ref={hostRef} data-pending="true" />;
 }
 
 export function PreBlock({

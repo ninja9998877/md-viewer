@@ -14,3 +14,37 @@ export async function writeMarkdownFile(path: string, contents: string): Promise
   }
   await invoke("write_markdown", { path, contents });
 }
+
+/** Thrown by `withTimeout` so callers can tell a deadline apart from a real
+ *  read failure and say something more useful than the raw message. */
+export class TimeoutError extends Error {
+  constructor() {
+    super("timed out");
+    this.name = "TimeoutError";
+  }
+}
+
+/**
+ * Reject once `ms` has passed without `promise` settling.
+ *
+ * A document opened through a cloud provider's `content://` URI has to be
+ * fetched before its first byte arrives. The native read reports no progress and
+ * cannot be cancelled, so without a deadline the reader simply keeps showing
+ * whatever was on screen before — which the user rightly reads as "it ignored my
+ * tap". The read itself is left running; only the UI gives up waiting.
+ */
+export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new TimeoutError()), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        window.clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}

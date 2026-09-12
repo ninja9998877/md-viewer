@@ -7,9 +7,14 @@ export const en = {
   save: "Save",
   share: "Share",
   shareHint: "Share this document",
-  shareCopied: "Copied to clipboard",
+  shareCopied: "Copied — paste it into your chat",
   shareDownloaded: "Saved as a new file",
   shareFailed: "Could not share\n{message}",
+  shareUnavailable: "This build cannot share, and the clipboard is unreachable",
+  opening: "Opening…",
+  openTimeout: "Timed out reading the file. It may still be in the cloud — try again.",
+  openInterrupted:
+    "The last open was interrupted (Android reclaimed Moye). Please pick the file again.",
   // Attribution appended to the end of a shared document. Deliberately linkless:
   // there is no website yet and the desktop repo is not public, so a URL here
   // would just be a dead end. The emoji stands in for an icon so nothing has to

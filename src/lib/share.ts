@@ -1,6 +1,6 @@
 import { downloadText } from "./platform";
 
-export type ShareOutcome = "shared" | "copied" | "downloaded";
+export type ShareOutcome = "shared" | "copied" | "downloaded" | "unavailable";
 
 /** The user dismissed the share sheet — not an error, and not a reason to retry. */
 function isAbort(err: unknown): boolean {
@@ -11,13 +11,51 @@ function isAbort(err: unknown): boolean {
   );
 }
 
+/** True on the Android / iOS builds, where the browser fallbacks do not apply:
+ *  a WebView silently drops the `<a download>` click, so a "saved a file" claim
+ *  there is one the reader can only disprove by hunting for the file. */
+function isMobile(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+/**
+ * Last-resort clipboard write.
+ *
+ * `navigator.clipboard` needs a secure context *and* a focused document, and the
+ * host WebView does not reliably provide both. The legacy `execCommand("copy")`
+ * path needs neither and still works in Android's WebView, which is the host
+ * that matters here.
+ */
+function legacyCopy(text: string): boolean {
+  try {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    // Keep it off-screen without `display: none`, which would make it
+    // unselectable and therefore uncopyable.
+    area.style.position = "fixed";
+    area.style.top = "-1000px";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(area);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Hand a document to the outside world, degrading gracefully.
  *
- * The system share sheet is the nicest target — on a phone it drops the
- * document straight into WeChat / Feishu / Mail — but whether a WebView host
- * implements it varies, so we fall back to the clipboard and finally to saving
- * a file. The caller gets back which route was taken so it can say so.
+ * The system share sheet is the nicest target — on a phone it drops the document
+ * straight into WeChat / Feishu / Mail — but no embedded WebView implements the
+ * Web Share API (Chromium ships it to Chrome, not to WebView hosts) and Tauri
+ * has no share plugin. On mobile this realistically ends at the clipboard, and
+ * the caller is told which route was taken so it can say so honestly rather than
+ * claim a success that did not happen.
  */
 export async function shareDocument(opts: {
   title: string;
@@ -45,8 +83,12 @@ export async function shareDocument(opts: {
       return "copied";
     }
   } catch {
-    /* fall through */
+    /* fall through to the legacy path */
   }
+
+  if (legacyCopy(markdown)) return "copied";
+
+  if (isMobile()) return "unavailable";
 
   downloadText(filename, markdown);
   return "downloaded";

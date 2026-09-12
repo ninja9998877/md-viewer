@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
-import { readMarkdownFile, writeMarkdownFile } from "./lib/fs";
+import { readMarkdownFile, writeMarkdownFile, TimeoutError, withTimeout } from "./lib/fs";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { MarkdownEditor, type EditorScrollInfo } from "./components/MarkdownEditor";
@@ -43,6 +43,10 @@ function readTheme(): boolean {
     return false;
   }
 }
+
+/** How long to wait for a document before telling the reader something is wrong.
+ *  Generous on purpose: a slow disk or a network path is not an error. */
+const READ_TIMEOUT_MS = 20_000;
 
 export default function App() {
   const { t, locale, setLocale } = useI18n();
@@ -157,7 +161,8 @@ export default function App() {
 
   const loadPath = useCallback(
     async (path: string, mode: ViewMode = "preview") => {
-      const text = await readMarkdownFile(path);
+      // A deadline rather than an open-ended wait: see READ_TIMEOUT_MS.
+      const text = await withTimeout(readMarkdownFile(path), READ_TIMEOUT_MS);
       loadText(text, path, mode);
       const label = fileNameOf(path, t.untitled);
       setRecent(rememberRecent(path, label));
@@ -207,9 +212,11 @@ export default function App() {
       input.click();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      window.alert(fmt(t.openFailed, { message }));
+      window.alert(
+        err instanceof TimeoutError ? t.openTimeout : fmt(t.openFailed, { message }),
+      );
     }
-  }, [confirmDiscard, loadPath, loadText, t.openFailed]);
+  }, [confirmDiscard, loadPath, loadText, t.openFailed, t.openTimeout]);
 
   const handleSaveAs = useCallback(async () => {
     const current = contentRef.current;
@@ -553,6 +560,7 @@ export default function App() {
       const outcome = await shareDocument({ title: name, markdown, filename: name });
       if (outcome === "copied") setToast(t.shareCopied);
       else if (outcome === "downloaded") setToast(t.shareDownloaded);
+      else if (outcome === "unavailable") window.alert(t.shareUnavailable);
       // "shared" needs no toast — the share sheet was its own feedback.
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
