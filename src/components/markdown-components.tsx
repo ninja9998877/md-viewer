@@ -59,15 +59,23 @@ export function createMarkdownComponents(
     code: ({
       className,
       children,
+      ...props
     }: {
       className?: string;
       children?: ReactNode;
+      [key: string]: unknown;
     }) => {
       const isBlock =
         typeof className === "string" &&
         (className.includes("language-") || className.includes("hljs"));
       if (isBlock) {
-        return <code className={className}>{children}</code>;
+        // Forward the fence's title (see `remarkCodeMeta`) down to the element
+        // that PreBlock inspects; without this the label is dropped here.
+        return (
+          <code className={className} data-title={props["data-title"] as string | undefined}>
+            {children}
+          </code>
+        );
       }
       return <code className="inline-code">{children}</code>;
     },

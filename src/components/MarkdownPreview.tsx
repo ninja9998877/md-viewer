@@ -22,6 +22,7 @@ import { parseDocument, type DocSection } from "../lib/markdown-sections";
 import { remarkGithubAlerts } from "../lib/remark-github-alerts";
 import { remarkHeadingIds } from "../lib/remark-heading-ids";
 import { remarkSupersub } from "../lib/remark-supersub";
+import { remarkCodeMeta } from "../lib/remark-code-meta";
 import {
   collectMapped,
   rehypeSourceLine,
@@ -40,7 +41,16 @@ const sanitizeSchema = {
     ...defaultSchema.attributes,
     div: ["className", "class"],
     span: [...(defaultSchema.attributes?.span ?? []), "className", "class"],
-    code: [...(defaultSchema.attributes?.code ?? []), "className", "class"],
+    // `data-title` comes from `remarkCodeMeta` (a fenced block's own label) and
+    // runs *before* sanitize, so it has to be allowlisted here or it is dropped
+    // without a word. `data-source-line` needs no entry: its plugin runs after.
+    code: [
+      ...(defaultSchema.attributes?.code ?? []),
+      "className",
+      "class",
+      "data-title",
+      "dataTitle",
+    ],
     pre: [...(defaultSchema.attributes?.pre ?? []), "className", "class"],
     details: ["open"],
     blockquote: [
@@ -598,6 +608,7 @@ const SectionMarkdown = memo(
           remarkMath,
           remarkSupersub,
           remarkHeadingIds,
+          remarkCodeMeta,
         ]}
         rehypePlugins={[
           rehypeRaw,

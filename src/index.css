@@ -372,6 +372,38 @@ button:active {
   background-color: rgb(255 214 0 / 45%);
 }
 
+/* Unified diff: colour by role. Under ordinary syntax highlighting a removal
+   and an addition look much alike, and which lines are going away is the one
+   thing a reader needs at a glance. */
+.code-diff {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.code-diff > span {
+  display: block;
+  padding: 0 6px;
+}
+
+.code-diff__add {
+  background: rgb(46 160 67 / 18%);
+}
+
+.code-diff__del {
+  background: rgb(248 81 73 / 18%);
+}
+
+.code-diff__hunk {
+  color: var(--text-muted);
+}
+
+.code-diff__file {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
 ::highlight(moye-find-active) {
   background-color: rgb(255 140 0 / 80%);
   color: var(--text-primary);

@@ -14,6 +14,21 @@ import { fmt, useI18n } from "../i18n";
 
 const COLLAPSE_LINES = 28;
 
+/**
+ * Colour a unified-diff line by its role.
+ *
+ * Agents emit ```` ```diff ```` constantly, and with ordinary syntax
+ * highlighting a removal looks much like an addition — the single thing a reader
+ * needs to see at a glance is which lines are going away.
+ */
+function diffLineClass(line: string): string {
+  if (line.startsWith("+++") || line.startsWith("---")) return "code-diff__file";
+  if (line.startsWith("@@")) return "code-diff__hunk";
+  if (line.startsWith("+")) return "code-diff__add";
+  if (line.startsWith("-")) return "code-diff__del";
+  return "code-diff__ctx";
+}
+
 let mermaidTheme: "dark" | "neutral" | null = null;
 
 function ensureMermaid(isDark: boolean) {
@@ -94,6 +109,12 @@ export function PreBlock({
       ? String((codeEl.props as { className?: string }).className || "")
       : "";
   const lang = /language-([A-Za-z0-9_+-]+)/.exec(className)?.[1] ?? "";
+  // The fence's own label (`title="src/App.tsx"`), carried through by
+  // `remarkCodeMeta`. More useful than the language when present.
+  const title =
+    codeEl && isValidElement(codeEl)
+      ? String((codeEl.props as { "data-title"?: string })["data-title"] ?? "")
+      : "";
   const raw = useMemo(() => {
     const text = codeEl && isValidElement(codeEl)
       ? getNodeText((codeEl.props as { children?: ReactNode }).children)
@@ -133,14 +154,26 @@ export function PreBlock({
   return (
     <div className="code-card" data-source-line={sourceLine}>
       <div className="code-card__bar">
-        <span className="code-card__lang">{languageLabel(lang)}</span>
+        <span className="code-card__lang" title={title || undefined}>
+          {title || languageLabel(lang)}
+        </span>
         <span className="code-card__meta">{fmt(t.lines, { n: lineCount })}</span>
         <button type="button" className="code-card__copy" onClick={() => void copy()}>
           {copied ? t.copied : t.copy}
         </button>
       </div>
       <div className={`code-card__body ${collapsed ? "is-collapsed" : ""}`}>
-        <pre>{codeEl ?? children}</pre>
+        {lang === "diff" ? (
+          <pre className="code-diff">
+            {raw.split("\n").map((line, index) => (
+              <span key={index} className={diffLineClass(line)}>
+                {line || " "}
+              </span>
+            ))}
+          </pre>
+        ) : (
+          <pre>{codeEl ?? children}</pre>
+        )}
       </div>
       {canCollapse ? (
         <button
