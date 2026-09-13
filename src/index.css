@@ -369,6 +369,57 @@ button:active {
 
 /* Image lightbox — the controlled replacement for pinch-zoom, which is off
    app-wide because the WebView could get stuck zoomed with no way to pan out. */
+.dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(0 0 0 / 42%);
+}
+
+.dialog__box {
+  width: min(420px, 100%);
+  padding: 18px 18px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-preview);
+  box-shadow: var(--shadow-paper);
+}
+
+.dialog__message {
+  margin: 0 0 16px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  /* Messages are built with \n (see `openFailed` and friends). */
+  white-space: pre-wrap;
+}
+
+.dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dialog__btn {
+  min-width: 72px;
+  padding: 7px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-size: 13.5px;
+}
+
+.dialog__btn--primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+}/* Image lightbox — the controlled replacement for pinch-zoom, which is off
+   app-wide because the WebView could get stuck zoomed with no way to pan out. */
 .md-img {
   cursor: zoom-in;
 }

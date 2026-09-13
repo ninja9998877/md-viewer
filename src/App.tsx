@@ -12,6 +12,7 @@ import {
 } from "./components/MarkdownPreview";
 import { TocSidebar } from "./components/TocSidebar";
 import { FindBar } from "./components/FindBar";
+import { Dialog, type DialogRequest } from "./components/Dialog";
 import { AppMenu } from "./components/AppMenu";
 import { parseDocument } from "./lib/markdown-sections";
 import { applyReaderSettings, loadReaderSettings, saveReaderSettings, type ReaderSettings } from "./lib/reader-settings";
@@ -188,10 +189,37 @@ export default function App() {
     }
   }, [locale, t.welcome]);
 
-  const confirmDiscard = useCallback(() => {
+  // In-app dialogs. `window.alert` / `window.confirm` are not merely ugly here:
+  // wry hardcodes the native buttons to "OK" and "Cancel", so a Chinese UI showed
+  // English buttons on every error and on the discard confirmation.
+  const [dialog, setDialog] = useState<DialogRequest | null>(null);
+  const dialogRef = useRef<DialogRequest | null>(null);
+  dialogRef.current = dialog;
+
+  const showAlert = useCallback((message: string) => {
+    setDialog({ kind: "alert", message });
+  }, []);
+
+  const askConfirm = useCallback(
+    (message: string) =>
+      new Promise<boolean>((resolve) => {
+        setDialog({ kind: "confirm", message, resolve });
+      }),
+    [],
+  );
+
+  const resolveDialog = useCallback((accepted: boolean) => {
+    // Read the pending request through a ref: calling `resolve` inside a state
+    // updater would run it twice under StrictMode.
+    const pending = dialogRef.current;
+    setDialog(null);
+    pending?.resolve?.(accepted);
+  }, []);
+
+  const confirmDiscard = useCallback(async () => {
     if (!isDirtyRef.current) return true;
-    return window.confirm(t.confirmDiscard);
-  }, [t.confirmDiscard]);
+    return askConfirm(t.confirmDiscard);
+  }, [askConfirm, t.confirmDiscard]);
 
   const loadText = useCallback((text: string, path: string | null, mode: ViewMode) => {
     setContent(text);
@@ -261,7 +289,7 @@ export default function App() {
   }, [loadText]);
 
   const handleOpen = useCallback(async () => {
-    if (!confirmDiscard()) return;
+    if (!(await confirmDiscard())) return;
     try {
       if (isTauri()) {
         const selected = await open({
@@ -284,7 +312,7 @@ export default function App() {
       input.click();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      window.alert(
+      showAlert(
         err instanceof TimeoutError ? t.openTimeout : fmt(t.openFailed, { message }),
       );
     }
@@ -309,7 +337,7 @@ export default function App() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      window.alert(fmt(t.saveFailed, { message }));
+      showAlert(fmt(t.saveFailed, { message }));
     }
   }, [t.saveFailed, t.untitled]);
 
@@ -327,8 +355,8 @@ export default function App() {
     }
   }, [handleSaveAs]);
 
-  const handleNew = useCallback(() => {
-    if (!confirmDiscard()) return;
+  const handleNew = useCallback(async () => {
+    if (!(await confirmDiscard())) return;
     loadText(t.newDoc, null, "split");
   }, [confirmDiscard, loadText, t.newDoc]);
 
@@ -569,9 +597,9 @@ export default function App() {
     let cancelled = false;
 
     const openDroppedFile = async (file: File) => {
-      if (!confirmDiscard()) return;
+      if (!(await confirmDiscard())) return;
       if (!isMarkdownPath(file.name)) {
-        window.alert(t.dropNeedMd);
+        showAlert(t.dropNeedMd);
         return;
       }
       loadText(await file.text(), file.name, "preview");
@@ -584,10 +612,10 @@ export default function App() {
           const path = event.payload.paths[0];
           if (!path) return;
           if (!isMarkdownPath(path)) {
-            window.alert(t.dropNeedMd);
+            showAlert(t.dropNeedMd);
             return;
           }
-          if (!confirmDiscard()) return;
+          if (!(await confirmDiscard())) return;
           try {
             await loadPath(path, "preview");
           } catch (err) {
@@ -681,9 +709,9 @@ export default function App() {
   const handleAssociate = async () => {
     try {
       await invoke("associate_markdown_files");
-      window.alert(t.associated);
+      showAlert(t.associated);
     } catch (err) {
-      window.alert(fmt(t.associateFailed, { error: String(err) }));
+      showAlert(fmt(t.associateFailed, { error: String(err) }));
     }
   };
 
@@ -697,11 +725,11 @@ export default function App() {
       const outcome = await shareDocument({ title: name, markdown, filename: name });
       if (outcome === "copied") setToast(t.shareCopied);
       else if (outcome === "downloaded") setToast(t.shareDownloaded);
-      else if (outcome === "unavailable") window.alert(t.shareUnavailable);
+      else if (outcome === "unavailable") showAlert(t.shareUnavailable);
       // "shared" needs no toast — the share sheet was its own feedback.
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      window.alert(fmt(t.shareFailed, { message }));
+      showAlert(fmt(t.shareFailed, { message }));
     }
   };
 
@@ -723,6 +751,8 @@ export default function App() {
       <div className="read-progress" ref={progressRef} />
 
       {toast ? <div className="live-toast">{toast}</div> : null}
+
+      {dialog ? <Dialog request={dialog} t={t} onResolve={resolveDialog} /> : null}
 
       <header className="chrome">
         <div className="chrome__left">
@@ -760,9 +790,9 @@ export default function App() {
                   setMenuOpen(false);
                   setFindOpen(true);
                 }}
-                onRecent={(path) => {
+                onRecent={async (path) => {
                   setMenuOpen(false);
-                  if (!confirmDiscard()) return;
+                  if (!(await confirmDiscard())) return;
                   void loadPath(path, "preview").catch((err) => {
                     // The stored path is unreachable — the file picker's grant
                     // does not survive the process that received it, so an entry
@@ -779,7 +809,7 @@ export default function App() {
                     }
                     const message = err instanceof Error ? err.message : String(err);
                     setRecent(forgetRecent(path));
-                    window.alert(fmt(t.openFailed, { message }));
+                    showAlert(fmt(t.openFailed, { message }));
                   });
                 }}
                 onForgetRecent={(path) => setRecent(forgetRecent(path))}

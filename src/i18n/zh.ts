@@ -44,6 +44,7 @@ export const zh = {
   findClose: "关闭查找",
   findNoMatch: "没有结果",
   findCount: "{n}/{total}",
+  ok: "确定",
   lightboxClose: "关闭图片",
   lightboxHint: "双击放大 · 拖动平移 · Esc 关闭",
   associate: "设为默认",

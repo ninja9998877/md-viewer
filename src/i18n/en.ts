@@ -47,6 +47,7 @@ export const en = {
   findClose: "Close find",
   findNoMatch: "No results",
   findCount: "{n}/{total}",
+  ok: "OK",
   lightboxClose: "Close image",
   lightboxHint: "Double-tap to zoom · drag to pan · Esc to close",
   associate: "Set default",
