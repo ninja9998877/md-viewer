@@ -36,6 +36,7 @@ export function createMarkdownComponents(
   isDark: boolean,
   idBySourceLine: Record<number, string>,
   filePath: string | null,
+  onZoomImage?: (src: string, alt: string) => void,
 ): Components {
   return {
     h1: heading("h1", idBySourceLine),
@@ -131,8 +132,20 @@ export function createMarkdownComponents(
         </div>
       );
     },
-    img: ({ src, alt }: { src?: string; alt?: string }) => (
-      <img src={resolveImageSrc(src, filePath)} alt={alt ?? ""} loading="lazy" />
-    ),
+    img: ({ src, alt }: { src?: string; alt?: string }) => {
+      const resolved = resolveImageSrc(src, filePath);
+      return (
+        <img
+          src={resolved}
+          alt={alt ?? ""}
+          loading="lazy"
+          className="md-img"
+          // Pinch-zoom is disabled app-wide (it used to wedge the WebView in a
+          // zoomed state the reader could not pan out of), so this is the only
+          // way to actually enlarge a diagram on a phone.
+          onClick={onZoomImage ? () => onZoomImage(resolved, alt ?? "") : undefined}
+        />
+      );
+    },
   } as Components;
 }

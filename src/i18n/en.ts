@@ -47,6 +47,8 @@ export const en = {
   findClose: "Close find",
   findNoMatch: "No results",
   findCount: "{n}/{total}",
+  lightboxClose: "Close image",
+  lightboxHint: "Double-tap to zoom · drag to pan · Esc to close",
   associate: "Set default",
   associateTitle: "Open .md files with Moye",
   light: "Light",

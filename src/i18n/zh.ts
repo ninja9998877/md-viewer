@@ -44,6 +44,8 @@ export const zh = {
   findClose: "关闭查找",
   findNoMatch: "没有结果",
   findCount: "{n}/{total}",
+  lightboxClose: "关闭图片",
+  lightboxHint: "双击放大 · 拖动平移 · Esc 关闭",
   associate: "设为默认",
   associateTitle: "把 .md 设为用墨页打开",
   light: "浅色",

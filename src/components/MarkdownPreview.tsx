@@ -29,6 +29,7 @@ import {
   type PreviewScrollTarget,
 } from "../lib/source-line";
 import { FrontmatterCard } from "./FrontmatterCard";
+import { ImageLightbox } from "./ImageLightbox";
 import { createMarkdownComponents } from "./markdown-components";
 import { useI18n, type Locale } from "../i18n";
 
@@ -166,7 +167,10 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
     },
     ref,
   ) {
-    const { locale } = useI18n();
+    const { t, locale } = useI18n();
+    // The image the reader tapped to enlarge, if any. Owned here because this
+    // component builds the markdown renderers that detect the tap.
+    const [zoom, setZoom] = useState<{ src: string; alt: string } | null>(null);
     const parsed = useMemo(() => parseDocument(content), [content]);
     const heightsRef = useRef<number[]>([]);
     const heightsByKey = useRef(new Map<string, number>());
@@ -180,7 +184,13 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
     sectionsRef.current = parsed.sections;
 
     const components = useMemo(
-      () => createMarkdownComponents(isDark, parsed.idBySourceLine, filePath ?? null),
+      () =>
+        createMarkdownComponents(
+          isDark,
+          parsed.idBySourceLine,
+          filePath ?? null,
+          (src, alt) => setZoom({ src, alt }),
+        ),
       [isDark, parsed.idBySourceLine, filePath],
     );
 
@@ -551,6 +561,14 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
           })}
           {range.padBottom > 0 ? <div style={{ height: range.padBottom }} aria-hidden /> : null}
         </div>
+        {zoom ? (
+          <ImageLightbox
+            src={zoom.src}
+            alt={zoom.alt}
+            t={t}
+            onClose={() => setZoom(null)}
+          />
+        ) : null}
       </div>
     );
   },
