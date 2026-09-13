@@ -37,6 +37,7 @@ export function createMarkdownComponents(
   idBySourceLine: Record<number, string>,
   filePath: string | null,
   onZoomImage?: (src: string, alt: string) => void,
+  onOpenRef?: (ref: string) => void,
 ): Components {
   return {
     h1: heading("h1", idBySourceLine),
@@ -98,6 +99,23 @@ export function createMarkdownComponents(
       </AlertBlock>
     ),
     a: ({ href, children }: { href?: string; children?: ReactNode }) => {
+      // A file citation wrapped by `rehypeFileRefs`, under a private scheme so
+      // the WebView never tries to navigate it.
+      if (href?.startsWith("moye-ref:")) {
+        const ref = href.slice("moye-ref:".length);
+        return (
+          <a
+            href={href}
+            className="file-ref"
+            onClick={(event) => {
+              event.preventDefault();
+              onOpenRef?.(ref);
+            }}
+          >
+            {children}
+          </a>
+        );
+      }
       const external = Boolean(href && /^https?:\/\//i.test(href));
       return (
         <a

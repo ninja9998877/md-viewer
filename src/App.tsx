@@ -29,6 +29,8 @@ import {
 import { shareDocument } from "./lib/share";
 import { findMatches } from "./lib/find";
 import { loadReadingPosition, saveReadingPosition } from "./lib/reading-position";
+import { joinPath } from "./lib/resolve-image";
+import { openPath } from "@tauri-apps/plugin-opener";
 import {
   countLines,
   downloadText,
@@ -53,6 +55,20 @@ function readTheme(): boolean {
 /** How long to wait for a document before telling the reader something is wrong.
  *  Generous on purpose: a slow disk is not an error. */
 const READ_TIMEOUT_MS = 20_000;
+
+/**
+ * Turn a `path/to/file.ts:190` citation into something the OS can open, or null
+ * when there is nothing to resolve against — a document that came from the
+ * clipboard, or a `content://` URI with no directory to join.
+ */
+function resolveRefPath(ref: string, docPath: string | null): string | null {
+  if (!docPath || docPath.includes("://")) return null;
+  const dir = docPath.replace(/[\\/][^\\/]+$/, "");
+  // An editor wants a path, not a citation.
+  const file = ref.replace(/:\d+(?::\d+)?$/, "");
+  if (/^([a-zA-Z]:[\\/]|[\\/])/.test(file)) return file;
+  return joinPath(dir, file);
+}
 
 export default function App() {
   const { t, locale, setLocale } = useI18n();
@@ -304,6 +320,63 @@ export default function App() {
       saveSnapshot(path, label, text);
     },
     [loadText, t.untitled],
+  );
+
+  const openClipboard = useCallback(async () => {
+    let text = "";
+    try {
+      text = await navigator.clipboard.readText();
+    } catch (err) {
+      // Reading needs focus and, in some hosts, a permission a WebView cannot
+      // even prompt for — say so rather than sitting there doing nothing.
+      const message = err instanceof Error ? err.message : String(err);
+      showAlert(fmt(t.clipboardFailed, { message }));
+      return;
+    }
+    if (!text.trim()) {
+      showAlert(t.clipboardEmpty);
+      return;
+    }
+    if (!(await confirmDiscard())) return;
+    // No real file behind this: use the label as the document name (the desktop
+    // has no separate resolved-name state) so the title bar says where it came
+    // from, and let saving fall through to Save As (see handleSave).
+    loadText(text, t.clipboardTitle, "preview");
+    setToast(t.clipboardOpened);
+  }, [
+    confirmDiscard,
+    loadText,
+    showAlert,
+    t.clipboardEmpty,
+    t.clipboardFailed,
+    t.clipboardOpened,
+    t.clipboardTitle,
+  ]);
+
+  const openFileRef = useCallback(
+    async (ref: string) => {
+      // On a real filesystem, hand the file to whatever owns that extension —
+      // an editor, usually — which is the whole point of a citation. Anywhere
+      // else (a `content://` document, a phone, the web build) the useful thing
+      // is to put the reference on the clipboard so it can be pasted where the
+      // code actually lives.
+      const target = resolveRefPath(ref, filePathRef.current);
+      if (target && isTauri()) {
+        try {
+          await openPath(target);
+          return;
+        } catch {
+          /* nothing registered for that type — copying still helps */
+        }
+      }
+      try {
+        await navigator.clipboard.writeText(ref);
+        setToast(t.refCopied);
+      } catch {
+        showAlert(ref);
+      }
+    },
+    [showAlert, t.refCopied],
   );
 
   useEffect(() => {
@@ -850,6 +923,10 @@ export default function App() {
                 }}
                 onForgetRecent={(path) => setRecent(forgetRecent(path))}
                 version={version}
+                onClipboard={() => {
+                  setMenuOpen(false);
+                  void openClipboard();
+                }}
                 onDiagnostics={() => {
                   setMenuOpen(false);
                   void copyDiagnostics();
@@ -950,6 +1027,7 @@ export default function App() {
               findQuery={findOpen ? findQuery : ""}
               findSection={activeSection}
               findOrdinal={activeOrdinal}
+              onOpenRef={openFileRef}
             />
           </article>
 

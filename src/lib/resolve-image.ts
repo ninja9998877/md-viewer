@@ -1,7 +1,10 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { isTauri } from "./platform";
 
-function joinPath(dir: string, rel: string): string {
+/** Join a directory and a relative path, keeping whichever separator the
+ *  directory already uses. Exported so file-reference links resolve the same
+ *  way images do. */
+export function joinPath(dir: string, rel: string): string {
   const left = dir.replace(/[\\/]+$/, "");
   const right = rel.replace(/^[\\/]+/, "");
   const sep = dir.includes("\\") ? "\\" : "/";

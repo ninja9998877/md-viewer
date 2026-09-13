@@ -10,7 +10,7 @@ import {
   useState,
   type RefObject,
 } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -23,6 +23,7 @@ import { remarkGithubAlerts } from "../lib/remark-github-alerts";
 import { remarkHeadingIds } from "../lib/remark-heading-ids";
 import { remarkSupersub } from "../lib/remark-supersub";
 import { remarkCodeMeta } from "../lib/remark-code-meta";
+import { rehypeFileRefs } from "../lib/rehype-file-refs";
 import {
   collectMapped,
   rehypeSourceLine,
@@ -162,6 +163,8 @@ interface MarkdownPreviewProps {
   findSection?: number;
   /** Zero-based index of the active match among the hits in that section. */
   findOrdinal?: number;
+  /** Called with the raw `path:line` text when a file citation is clicked. */
+  onOpenRef?: (ref: string) => void;
 }
 
 const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewProps>(
@@ -174,6 +177,7 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
       findQuery = "",
       findSection = -1,
       findOrdinal = -1,
+      onOpenRef,
     },
     ref,
   ) {
@@ -200,8 +204,9 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
           parsed.idBySourceLine,
           filePath ?? null,
           (src, alt) => setZoom({ src, alt }),
+          onOpenRef,
         ),
-      [isDark, parsed.idBySourceLine, filePath],
+      [isDark, parsed.idBySourceLine, filePath, onOpenRef],
     );
 
     const markSyncing = useCallback(() => {
@@ -616,8 +621,14 @@ const SectionMarkdown = memo(
           rehypeKatex,
           [rehypeHighlight, { ignoreMissing: true }],
           rehypeSourceLine(offset),
+          rehypeFileRefs,
         ]}
         components={components}
+        // react-markdown blanks any URL whose protocol is not on its safe list,
+        // which silently turned file citations into `href=""` and made them
+        // unclickable. `moye-ref:` never reaches the network — the `a` renderer
+        // intercepts it — so letting it through costs nothing.
+        urlTransform={(url) => (url.startsWith("moye-ref:") ? url : defaultUrlTransform(url))}
       >
         {section.markdown}
       </ReactMarkdown>

@@ -23,6 +23,7 @@ interface AppMenuProps {
   onRecent: (path: string) => void;
   onForgetRecent: (path: string) => void;
   version: string;
+  onClipboard: () => void;
   onDiagnostics: () => void;
   onToggleToc: () => void;
   onFont: (next: number) => void;
@@ -48,6 +49,7 @@ export function AppMenu({
   onRecent,
   onForgetRecent,
   version,
+  onClipboard,
   onDiagnostics,
   onToggleToc,
   onFont,
@@ -86,6 +88,11 @@ export function AppMenu({
       <div className="app-menu__group">
         <button type="button" role="menuitem" onClick={onOpen}>
           {t.open}
+        </button>
+        {/* The friendliest way for an Agent to hand over a document: no file
+            system involved, just paste. */}
+        <button type="button" role="menuitem" onClick={onClipboard}>
+          {t.clipboard}
         </button>
         <button type="button" role="menuitem" onClick={onNew}>
           {t.newFile}
