@@ -13,6 +13,8 @@ import {
 import { TocSidebar } from "./components/TocSidebar";
 import { FindBar } from "./components/FindBar";
 import { Dialog, type DialogRequest } from "./components/Dialog";
+import { getVersion } from "@tauri-apps/api/app";
+import { diagnosticsText, recordError } from "./lib/diagnostics";
 import { AppMenu } from "./components/AppMenu";
 import { parseDocument } from "./lib/markdown-sections";
 import { applyReaderSettings, loadReaderSettings, saveReaderSettings, type ReaderSettings } from "./lib/reader-settings";
@@ -197,8 +199,42 @@ export default function App() {
   dialogRef.current = dialog;
 
   const showAlert = useCallback((message: string) => {
+    // Every user-visible error passes through here, which makes it the one place
+    // worth remembering it for the diagnostics report.
+    recordError(message);
     setDialog({ kind: "alert", message });
   }, []);
+
+  const [version, setVersion] = useState("");
+  useEffect(() => {
+    // `getVersion` reads the native bundle version — the one CI stamps into
+    // tauri.conf.json. package.json's version is not kept in step with it.
+    getVersion()
+      .then(setVersion)
+      .catch(() => setVersion("dev"));
+  }, []);
+
+  const copyDiagnostics = useCallback(async () => {
+    const text = diagnosticsText({
+      app: `${t.productName} ${version || "?"}`,
+      runtime: isTauri() ? "tauri" : "web",
+      userAgent: navigator.userAgent,
+      locale,
+      document: filePathRef.current ?? "(none)",
+      lines: String(countLines(contentRef.current)),
+      chars: String(contentRef.current.length),
+      recents: String(loadRecent().length),
+    });
+    try {
+      await navigator.clipboard.writeText(text);
+      setToast(t.diagnosticsCopied);
+    } catch {
+      // No clipboard in this host — show it instead so it can still be selected
+      // by hand. Deliberately bypasses `showAlert` so the report does not become
+      // its own "last error".
+      setDialog({ kind: "alert", message: text });
+    }
+  }, [locale, t.diagnosticsCopied, t.productName, version]);
 
   const askConfirm = useCallback(
     (message: string) =>
@@ -813,6 +849,11 @@ export default function App() {
                   });
                 }}
                 onForgetRecent={(path) => setRecent(forgetRecent(path))}
+                version={version}
+                onDiagnostics={() => {
+                  setMenuOpen(false);
+                  void copyDiagnostics();
+                }}
                 onToggleToc={() => {
                   setMenuOpen(false);
                   setTocOpen((v) => !v);

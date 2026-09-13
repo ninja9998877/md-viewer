@@ -22,6 +22,8 @@ interface AppMenuProps {
   onFind: () => void;
   onRecent: (path: string) => void;
   onForgetRecent: (path: string) => void;
+  version: string;
+  onDiagnostics: () => void;
   onToggleToc: () => void;
   onFont: (next: number) => void;
   onPaper: (paper: PaperWidth) => void;
@@ -45,6 +47,8 @@ export function AppMenu({
   onFind,
   onRecent,
   onForgetRecent,
+  version,
+  onDiagnostics,
   onToggleToc,
   onFont,
   onPaper,
@@ -229,6 +233,18 @@ export function AppMenu({
           </div>
         </>
       ) : null}
+
+      <div className="app-menu__sep" />
+      <div className="app-menu__group">
+        <button type="button" role="menuitem" onClick={onDiagnostics}>
+          {t.diagnostics}
+        </button>
+      </div>
+      {/* Which build is on this device — the first thing worth knowing when a
+          bug report arrives, and impossible to tell apart otherwise. */}
+      <div className="app-menu__version">
+        {t.productName} {version}
+      </div>
     </div>
   );
 }

@@ -210,6 +210,16 @@ button:active {
   opacity: 0.7;
 }
 
+/* Which build is on the device — the first thing worth knowing about a bug
+   report, and otherwise impossible to tell apart. */
+.app-menu__version {
+  padding: 2px 10px 6px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Suppress the platform's own long-press affordances (text selection, the
    callout menu) on the rows that use a press-and-hold gesture. */
 .app-menu__recent {
