@@ -123,6 +123,8 @@ export default function App() {
   const applyingPreviewScroll = useRef(false);
   const scrollRaf = useRef(0);
   const positionTimer = useRef(0);
+  /** The last-document restore runs once per launch. */
+  const restoredRef = useRef(false);
 
   contentRef.current = content;
   filePathRef.current = filePath;
@@ -338,6 +340,35 @@ export default function App() {
     [loadText, t.untitled],
   );
 
+  /** Reopen what the reader had last.
+   *
+   * The welcome document is an onboarding screen, not something to show on every
+   * launch: once a document has been opened, starting the app should put the
+   * reader back where they were. Falls back to the local snapshot when the
+   * original path is no longer readable — the grant that made it readable died
+   * with the process that received it — and to the welcome page when there is
+   * nothing to reopen at all. */
+  const restoreLastDocument = useCallback(async () => {
+    // Once per launch: a locale change re-runs the effect this is called from.
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    const [last] = loadRecent();
+    if (!last) return;
+    try {
+      await loadPath(last.path, "preview");
+      return;
+    } catch {
+      /* fall through to the copy taken when it was first read */
+    }
+    const snapshot = loadSnapshot(last.path);
+    if (!snapshot) return;
+    loadText(snapshot.text, last.path, "preview");
+    setFileLabel(snapshot.name);
+    restoreReadingPosition(last.path);
+    setToast(t.snapshotOpened);
+  }, [loadPath, loadText, restoreReadingPosition, t.snapshotOpened]);
+
+
   const openClipboard = useCallback(async () => {
     let text = "";
     try {
@@ -540,7 +571,13 @@ export default function App() {
   }, [activeResult]);
 
   useEffect(() => {
-    if (!isTauri()) return;
+    if (!isTauri()) {
+      // Nothing to drain outside the app shell, but the last-document restore
+      // still applies — and keeping it here means the web build behaves like
+      // the app instead of quietly skipping the restore.
+      void restoreLastDocument();
+      return;
+    }
     let cancelled = false;
     let unlisten: (() => void) | undefined;
 
@@ -571,7 +608,10 @@ export default function App() {
         const paths = await invoke<string[]>("take_launch_files");
         if (cancelled) return;
         const path = paths.filter(Boolean).pop();
+        // A file the system handed us wins; otherwise pick up where the reader
+        // left off rather than showing the welcome page yet again.
         if (path) void openLaunch(path);
+        else void restoreLastDocument();
       } catch (err) {
         console.error("Failed to read launch files:", err);
       }
@@ -581,7 +621,7 @@ export default function App() {
       cancelled = true;
       unlisten?.();
     };
-  }, [loadPath]);
+  }, [loadPath, restoreLastDocument]);
 
   useEffect(() => {
     if (!isTauri()) return;
