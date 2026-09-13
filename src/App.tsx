@@ -30,6 +30,7 @@ import { shareDocument } from "./lib/share";
 import { findMatches } from "./lib/find";
 import { loadReadingPosition, saveReadingPosition } from "./lib/reading-position";
 import { joinPath } from "./lib/resolve-image";
+import { readClipboardText, writeClipboardText } from "./lib/clipboard";
 import { openPath } from "@tauri-apps/plugin-opener";
 import {
   countLines,
@@ -242,7 +243,7 @@ export default function App() {
       recents: String(loadRecent().length),
     });
     try {
-      await navigator.clipboard.writeText(text);
+      await writeClipboardText(text);
       setToast(t.diagnosticsCopied);
     } catch {
       // No clipboard in this host — show it instead so it can still be selected
@@ -325,7 +326,7 @@ export default function App() {
   const openClipboard = useCallback(async () => {
     let text = "";
     try {
-      text = await navigator.clipboard.readText();
+      text = await readClipboardText();
     } catch (err) {
       // Reading needs focus and, in some hosts, a permission a WebView cannot
       // even prompt for — say so rather than sitting there doing nothing.
@@ -370,7 +371,7 @@ export default function App() {
         }
       }
       try {
-        await navigator.clipboard.writeText(ref);
+        await writeClipboardText(ref);
         setToast(t.refCopied);
       } catch {
         showAlert(ref);

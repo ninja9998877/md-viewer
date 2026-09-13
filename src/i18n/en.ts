@@ -105,4 +105,17 @@ This reader **starts in preview**. Press E to edit, Esc to go back; O for the ta
 > [!TIP]
 > Use the contents list for long docs. Code blocks start collapsed; diagrams and formulas render in place.
 `,
+  // Phones have no keyboard, so the E / Esc / O instructions above would be
+  // unusable there. See the welcome effect in App.tsx.
+  welcomeMobile: `# Start reading
+
+Pick a Markdown file from the menu, or share one into Moye from another app.
+
+**This reader opens in preview.** Tap the pencil to edit, and the contents list is in the menu. If something is on the clipboard, the menu can read it in directly.
+
+---
+
+> [!TIP]
+> Start with the contents list for long docs. Code blocks start collapsed; diagrams and formulas render in place.
+`,
 };

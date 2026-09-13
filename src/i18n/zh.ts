@@ -102,4 +102,18 @@ export const zh = {
 > [!TIP]
 > 长文档请先看左侧目录。代码块默认折叠，图表和公式会按原文渲染。
 `,
+  // The desktop text above talks about E / Esc / O. A phone has no keyboard, so
+  // the mobile build gets its own copy rather than instructions that cannot be
+  // followed. Picked at runtime by width — see the welcome effect in App.tsx.
+  welcomeMobile: `# 开始阅读
+
+用菜单里的「打开」选一篇 Markdown，或从别的应用直接分享到墨页。
+
+**默认就是预览**。点右上角的铅笔进入编辑，目录在菜单里；剪贴板里有内容时，菜单里也能直接读进来。
+
+---
+
+> [!TIP]
+> 长文档先看目录。代码块默认折叠，图表和公式会按原文渲染。
+`,
 };

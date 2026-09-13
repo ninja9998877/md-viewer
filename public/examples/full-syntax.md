@@ -83,11 +83,11 @@ tags: reading, gfm, mermaid
 
 ### 图片
 
-![墨页 Moye](https://via.placeholder.com/300x80/2563eb/ffffff?text=Moye)
+![墨页 Moye](moye.svg)
 
 带链接的图片：
 
-[![点击访问](https://via.placeholder.com/200x60/10b981/ffffff?text=Click+Me)](https://github.com)
+[![点击访问](moye.svg)](https://github.com)
 
 ---
 

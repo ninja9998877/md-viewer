@@ -1,4 +1,6 @@
-import { downloadText } from "./platform";
+import { canShare, share } from "@vnidrop/tauri-plugin-share";
+import { downloadText, isTauri } from "./platform";
+import { writeClipboardText } from "./clipboard";
 
 export type ShareOutcome = "shared" | "copied" | "downloaded" | "unavailable";
 
@@ -22,10 +24,9 @@ function isMobile(): boolean {
 /**
  * Last-resort clipboard write.
  *
- * `navigator.clipboard` needs a secure context *and* a focused document, and the
- * host WebView does not reliably provide both. The legacy `execCommand("copy")`
- * path needs neither and still works in Android's WebView, which is the host
- * that matters here.
+ * Used only when the native clipboard route is unavailable — `execCommand`
+ * needs neither a secure context nor a focused document, which is exactly what
+ * a WebView is bad at providing.
  */
 function legacyCopy(text: string): boolean {
   try {
@@ -50,12 +51,14 @@ function legacyCopy(text: string): boolean {
 /**
  * Hand a document to the outside world, degrading gracefully.
  *
- * The system share sheet is the nicest target — on a phone it drops the document
- * straight into WeChat / Feishu / Mail — but no embedded WebView implements the
- * Web Share API (Chromium ships it to Chrome, not to WebView hosts) and Tauri
- * has no share plugin. On mobile this realistically ends at the clipboard, and
- * the caller is told which route was taken so it can say so honestly rather than
- * claim a success that did not happen.
+ * The share sheet is the point: on a phone it drops the document straight into
+ * WeChat / Feishu / Mail, which is the whole reason someone shares a document
+ * rather than copying it. No embedded WebView implements the Web Share API —
+ * Chromium ships it to Chrome, not to WebView hosts — so inside the app this
+ * goes through a native plugin instead, and only browsers get the web API.
+ *
+ * The content is shared as text, not as a file, on purpose: the text carries the
+ * Moye attribution line, and a shared `.md` file would not.
  */
 export async function shareDocument(opts: {
   title: string;
@@ -64,6 +67,20 @@ export async function shareDocument(opts: {
 }): Promise<ShareOutcome> {
   const { title, markdown, filename } = opts;
 
+  // 1. The native sheet, inside the app.
+  if (isTauri()) {
+    try {
+      const payload = { title, text: markdown };
+      if (await canShare(payload)) {
+        await share(payload);
+        return "shared";
+      }
+    } catch {
+      /* not available in this build — keep falling back */
+    }
+  }
+
+  // 2. The Web Share API, which exists in real browsers but not in a WebView.
   if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
     try {
       await navigator.share({ title, text: markdown });
@@ -73,15 +90,13 @@ export async function shareDocument(opts: {
       // wrong, and falling through would silently overwrite the clipboard of
       // someone who just decided *not* to share.
       if (isAbort(err)) return "shared";
-      // Anything else means share is unavailable in this host: try the next one.
     }
   }
 
+  // 3. The clipboard, through the native manager inside the app.
   try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(markdown);
-      return "copied";
-    }
+    await writeClipboardText(markdown);
+    return "copied";
   } catch {
     /* fall through to the legacy path */
   }
