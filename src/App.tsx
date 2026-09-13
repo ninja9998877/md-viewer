@@ -25,6 +25,7 @@ import {
 } from "./lib/recent-files";
 import { shareDocument } from "./lib/share";
 import { findMatches } from "./lib/find";
+import { loadReadingPosition, saveReadingPosition } from "./lib/reading-position";
 import {
   countLines,
   downloadText,
@@ -87,6 +88,7 @@ export default function App() {
   const followEditor = useRef(true);
   const applyingPreviewScroll = useRef(false);
   const scrollRaf = useRef(0);
+  const positionTimer = useRef(0);
 
   contentRef.current = content;
   filePathRef.current = filePath;
@@ -202,11 +204,33 @@ export default function App() {
     if (progressRef.current) progressRef.current.style.transform = "scaleX(0)";
   }, []);
 
+  /** Put the reader back where they left off in this document. */
+  const restoreReadingPosition = useCallback((path: string) => {
+    const position = loadReadingPosition(path);
+    if (!position) return;
+    let tries = 0;
+    const attempt = () => {
+      if (previewRef.current?.restoreAnchor(position)) {
+        // Sections above the anchor are still settling from their estimated
+        // heights to their real ones, and every one of them shifts everything
+        // below it — a first pass typically lands a screen's fraction off. One
+        // delayed correction pins the exact line.
+        window.setTimeout(() => previewRef.current?.restoreAnchor(position), 400);
+        return;
+      }
+      // The section may still be mounting, and its real height may not be
+      // measured yet; a short retry beats landing in the wrong place.
+      if (tries++ < 12) window.setTimeout(attempt, 60);
+    };
+    requestAnimationFrame(attempt);
+  }, []);
+
   const loadPath = useCallback(
     async (path: string, mode: ViewMode = "preview") => {
       // A deadline rather than an open-ended wait: see READ_TIMEOUT_MS.
       const text = await withTimeout(readMarkdownFile(path), READ_TIMEOUT_MS);
       loadText(text, path, mode);
+      restoreReadingPosition(path);
       const label = fileNameOf(path, t.untitled);
       setRecent(rememberRecent(path, label));
       // A no-op for plain paths, which is every path on desktop — see
@@ -227,7 +251,12 @@ export default function App() {
         if (!res.ok) throw new Error(`Failed to load ${md}`);
         return res.text();
       })
-      .then((text) => loadText(text, md, "preview"))
+      .then((text) => {
+        loadText(text, md, "preview");
+        // Same as a real open, so `?md=` behaves like one (and can be used to
+        // exercise the reading-position round trip).
+        restoreReadingPosition(md);
+      })
       .catch((err) => console.error(err));
   }, [loadText]);
 
@@ -615,6 +644,11 @@ export default function App() {
     applyEditorScroll(lastEditorScroll.current);
   }, [viewMode, applyEditorScroll]);
 
+  const flushReadingPosition = useCallback(() => {
+    const anchor = previewRef.current?.captureAnchor();
+    if (anchor) saveReadingPosition(filePathRef.current, anchor);
+  }, []);
+
   const onReaderScroll = () => {
     const el = readerRef.current;
     if (!el) return;
@@ -622,7 +656,27 @@ export default function App() {
     const p = max <= 0 ? 1 : el.scrollTop / max;
     if (progressRef.current) progressRef.current.style.transform = `scaleX(${p})`;
     if (!applyingPreviewScroll.current) followEditor.current = false;
+    // Remember the position, but not on every scroll event: capturing an anchor
+    // walks the document's ids, and a fling fires hundreds of events.
+    window.clearTimeout(positionTimer.current);
+    positionTimer.current = window.setTimeout(flushReadingPosition, 500);
   };
+
+  useEffect(() => {
+    // Do not rely on the scroll debounce alone — a window can be closed while
+    // the timer is still pending.
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flushReadingPosition();
+    };
+    window.addEventListener("pagehide", flushReadingPosition);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("pagehide", flushReadingPosition);
+      document.removeEventListener("visibilitychange", onHide);
+      window.clearTimeout(positionTimer.current);
+      flushReadingPosition();
+    };
+  }, [flushReadingPosition]);
 
   const handleAssociate = async () => {
     try {

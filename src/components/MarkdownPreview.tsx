@@ -135,7 +135,9 @@ export interface MarkdownPreviewHandle {
   scrollToLine: (line: number) => void;
   syncToEditor: (target: PreviewScrollTarget) => void;
   captureAnchor: () => PreviewAnchor | null;
-  restoreAnchor: (anchor: PreviewAnchor) => void;
+  /** Returns false while the anchor's section is still virtualized out, so a
+   *  caller restoring a remembered position knows to retry. */
+  restoreAnchor: (anchor: PreviewAnchor) => boolean;
 }
 
 interface MarkdownPreviewProps {
@@ -385,7 +387,17 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
       for (let i = 0; i < start; i++) padTop += heightsRef.current[i] ?? 0;
       let padBottom = 0;
       for (let i = end; i < parsed.sections.length; i++) padBottom += heightsRef.current[i] ?? 0;
-      setRange({ start, end, padTop, padBottom });
+      // Same compare-and-skip as `recompute`: callers retry this until the
+      // section is mounted, and a fresh object every time would re-render the
+      // whole list on each attempt.
+      setRange((prev) =>
+        prev.start === start &&
+        prev.end === end &&
+        prev.padTop === padTop &&
+        prev.padBottom === padBottom
+          ? prev
+          : { start, end, padTop, padBottom },
+      );
     };
 
     useLayoutEffect(() => {
@@ -420,13 +432,25 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
       },
       restoreAnchor: (anchor: PreviewAnchor) => {
         const root = scrollParentRef.current;
-        if (!root) return;
-        // The heading may be virtualized out of the DOM; nothing sensible to do
-        // then, and the next capture will simply pick a different anchor.
+        if (!root) return false;
+        // A remembered position normally points at a section the virtual list
+        // has not mounted — the reader was deep in the document while the list
+        // starts at the top. Reveal that section first; the element only appears
+        // once that render lands, so answer `false` and let the caller retry.
+        const index = parsed.sections.findIndex((section) =>
+          section.headingIds.includes(anchor.id),
+        );
+        if (index >= 0) revealIndex(index);
         const el = root.querySelector<HTMLElement>(`#${CSS.escape(anchor.id)}`);
-        if (!el) return;
+        if (!el) return false;
         const top = el.getBoundingClientRect().top - root.getBoundingClientRect().top;
         root.scrollTop += top - anchor.offset;
+        // Re-window explicitly rather than relying on the scroll event: the
+        // sections around the restored position may not be mounted at all, and
+        // without this the reader lands on the spacer that stands in for them —
+        // a restored position looking at a blank page.
+        scheduleRecompute();
+        return true;
       },
       scrollToHeading: (id: string) => {
         const index = parsed.sections.findIndex((section) => section.headingIds.includes(id));
