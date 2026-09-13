@@ -1,0 +1,34 @@
+name: CI
+
+# The desktop repo had no CI at all, which meant nothing verified a change
+# except the person who made it. Open-sourcing makes that untenable: a
+# contributor's pull request has to be checkable without a Windows machine and a
+# Tauri toolchain, and both of those are avoidable here — the type check, the
+# unit tests and the frontend build need nothing but Node.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 类型检查
+        run: npx tsc --noEmit
+
+      - name: 单元测试
+        run: npm test
+
+      - name: 构建前端
+        run: npx vite build
