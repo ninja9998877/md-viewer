@@ -19,6 +19,7 @@ interface AppMenuProps {
   onOpen: () => void;
   onNew: () => void;
   onSave: () => void;
+  onFind: () => void;
   onRecent: (path: string) => void;
   onForgetRecent: (path: string) => void;
   onToggleToc: () => void;
@@ -41,6 +42,7 @@ export function AppMenu({
   onOpen,
   onNew,
   onSave,
+  onFind,
   onRecent,
   onForgetRecent,
   onToggleToc,
@@ -89,6 +91,10 @@ export function AppMenu({
             {t.save}
           </button>
         ) : null}
+        {/* The only way in on a phone: there is no Ctrl+F on a touch keyboard. */}
+        <button type="button" role="menuitem" onClick={onFind}>
+          {t.find}
+        </button>
       </div>
 
       {recent.length > 0 ? (

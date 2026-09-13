@@ -311,6 +311,62 @@ button:active {
   font-size: 12px;
 }
 
+/* Find bar: sits directly under the header, above the document. */
+.find-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px max(10px, env(safe-area-inset-right)) 6px max(10px, env(safe-area-inset-left));
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-app);
+}
+
+.find-bar__input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-preview);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+}
+
+.find-bar__count {
+  min-width: 52px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.find-bar__btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.find-bar__btn:disabled {
+  opacity: 0.35;
+}
+
+/* Find hits are painted through the CSS Custom Highlight API, so the preview's
+   React-owned DOM is never mutated — see the note in MarkdownPreview. On a host
+   without the API these rules simply never match, and jumping between hits
+   still works. */
+::highlight(moye-find) {
+  background-color: rgb(255 214 0 / 45%);
+}
+
+::highlight(moye-find-active) {
+  background-color: rgb(255 140 0 / 80%);
+  color: var(--text-primary);
+}
+
 .chrome button {
   padding: 5px 10px;
   border-radius: 8px;

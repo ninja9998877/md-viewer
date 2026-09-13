@@ -11,6 +11,7 @@ import {
   type PreviewAnchor,
 } from "./components/MarkdownPreview";
 import { TocSidebar } from "./components/TocSidebar";
+import { FindBar } from "./components/FindBar";
 import { AppMenu } from "./components/AppMenu";
 import { parseDocument } from "./lib/markdown-sections";
 import { applyReaderSettings, loadReaderSettings, saveReaderSettings, type ReaderSettings } from "./lib/reader-settings";
@@ -23,6 +24,7 @@ import {
   type RecentFile,
 } from "./lib/recent-files";
 import { shareDocument } from "./lib/share";
+import { findMatches } from "./lib/find";
 import {
   countLines,
   downloadText,
@@ -58,6 +60,10 @@ export default function App() {
   const [tocOpen, setTocOpen] = useState(false);
   // Read by the keydown listener, which must not rebind on every toggle.
   const tocOpenRef = useRef(false);
+  const [findOpen, setFindOpen] = useState(false);
+  const findOpenRef = useRef(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [findIndex, setFindIndex] = useState(0);
   const [activeHeading, setActiveHeading] = useState("");
   const [previewContent, setPreviewContent] = useState(content);
 
@@ -87,7 +93,10 @@ export default function App() {
   isDirtyRef.current = isDirty;
   viewModeRef.current = viewMode;
 
-  const toc = useMemo(() => parseDocument(content).toc, [content]);
+  // Parsed once per content change: the contents list and the find bar both need
+  // the section list, and parsing a 2000-line document twice is wasteful.
+  const parsedDoc = useMemo(() => parseDocument(content), [content]);
+  const toc = parsedDoc.toc;
   const [recent, setRecent] = useState<RecentFile[]>(() => loadRecent());
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -95,10 +104,41 @@ export default function App() {
   const menuOpenRef = useRef(false);
   menuOpenRef.current = menuOpen;
   tocOpenRef.current = tocOpen;
+  findOpenRef.current = findOpen;
   const [reader, setReader] = useState<ReaderSettings>(() => loadReaderSettings());
   const lineCount = useMemo(() => countLines(content), [content]);
   const fileName = fileNameOf(filePath, t.untitled);
   const displayName = isDirty ? `${fileName} •` : fileName;
+
+  // Search runs over the source text, so it also finds hits the virtual list has
+  // not mounted. `activeSection` tells the preview which section to tint as the
+  // current one; the rest are tinted as ordinary hits.
+  const results = useMemo(() => findMatches(content, findQuery), [content, findQuery]);
+  const activeResult =
+    findOpen && results.length > 0 ? results[Math.min(findIndex, results.length - 1)] : null;
+  const activeSection = useMemo(() => {
+    if (!activeResult) return -1;
+    return parsedDoc.sections.findIndex(
+      (section) =>
+        activeResult.line >= section.startLine && activeResult.line <= section.endLine,
+    );
+  }, [activeResult, parsedDoc]);
+
+  // Which hit *within its own section* is the current one. Without it, every hit
+  // in the active section gets the "current" tint and the reader cannot tell
+  // which match the counter is pointing at.
+  const activeOrdinal = useMemo(() => {
+    if (!activeResult || activeSection < 0) return -1;
+    const section = parsedDoc.sections[activeSection];
+    let ordinal = 0;
+    for (const match of results) {
+      if (match.line > section.endLine) break;
+      if (match.line < section.startLine) continue;
+      if (match === activeResult) return ordinal;
+      ordinal += 1;
+    }
+    return -1;
+  }, [activeResult, activeSection, parsedDoc, results]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setPreviewContent(content), 80);
@@ -290,6 +330,29 @@ export default function App() {
     setActiveHeading(id);
   }, []);
 
+  const closeFind = useCallback(() => {
+    setFindOpen(false);
+    setFindQuery("");
+    setFindIndex(0);
+  }, []);
+
+  const stepFind = useCallback(
+    (delta: number) => {
+      const total = results.length;
+      if (total === 0) return;
+      setFindIndex((current) => (current + delta + total) % total);
+    },
+    [results.length],
+  );
+
+  // Follow the active match: on open, and on every step. `activeResult` keeps a
+  // stable identity while the query is unchanged, so this does not re-fire on
+  // unrelated renders.
+  useEffect(() => {
+    if (!activeResult) return;
+    previewRef.current?.scrollToLine(activeResult.line);
+  }, [activeResult]);
+
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;
@@ -424,6 +487,13 @@ export default function App() {
         handleNew();
         return;
       }
+      if (mod && e.key.toLowerCase() === "f") {
+        // The WebView has no find UI of its own, so this is the only way to
+        // search a document.
+        e.preventDefault();
+        setFindOpen(true);
+        return;
+      }
       if (e.key === "Escape") {
         if (menuOpenRef.current) {
           setMenuOpen(false);
@@ -431,6 +501,10 @@ export default function App() {
         }
         // The contents list is the other thing that can cover the page, so
         // Escape should dismiss whatever is on top of it.
+        if (findOpenRef.current) {
+          closeFind();
+          return;
+        }
         if (tocOpenRef.current) {
           setTocOpen(false);
           return;
@@ -453,7 +527,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handleNew, handleOpen, handleSave]);
+  }, [handleNew, handleOpen, handleSave, closeFind]);
 
   useEffect(() => {
     const prevent = (e: DragEvent) => {
@@ -628,6 +702,10 @@ export default function App() {
                   setMenuOpen(false);
                   void handleSave();
                 }}
+                onFind={() => {
+                  setMenuOpen(false);
+                  setFindOpen(true);
+                }}
                 onRecent={(path) => {
                   setMenuOpen(false);
                   if (!confirmDiscard()) return;
@@ -694,6 +772,23 @@ export default function App() {
         </div>
       </header>
 
+      {findOpen ? (
+        <FindBar
+          t={t}
+          query={findQuery}
+          count={results.length}
+          index={results.length ? Math.min(findIndex, results.length - 1) : -1}
+          onQuery={(next) => {
+            setFindQuery(next);
+            // A new query means a new first match; keeping the old index would
+            // land the reader in the middle of the new result set.
+            setFindIndex(0);
+          }}
+          onStep={stepFind}
+          onClose={closeFind}
+        />
+      ) : null}
+
       <div className="workspace">
         {tocOpen ? (
           <TocSidebar items={toc} activeId={activeHeading} onJump={jumpTo} />
@@ -727,6 +822,9 @@ export default function App() {
               isDark={isDark}
               filePath={filePath}
               scrollParentRef={readerRef}
+              findQuery={findOpen ? findQuery : ""}
+              findSection={activeSection}
+              findOrdinal={activeOrdinal}
             />
           </article>
 

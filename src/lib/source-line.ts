@@ -71,7 +71,9 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function collectMapped(root: HTMLElement): { el: HTMLElement; line: number }[] {
+/** Every element carrying a source line, sorted by line. Exported so the find
+ *  bar can scroll to a match without duplicating the mapping rules. */
+export function collectMapped(root: HTMLElement): { el: HTMLElement; line: number }[] {
   return [...root.querySelectorAll<HTMLElement>("[data-source-line]")]
     .map((el) => ({ el, line: Number(el.dataset.sourceLine) }))
     .filter((item) => Number.isFinite(item.line) && item.line > 0)

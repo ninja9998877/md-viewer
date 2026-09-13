@@ -22,7 +22,12 @@ import { parseDocument, type DocSection } from "../lib/markdown-sections";
 import { remarkGithubAlerts } from "../lib/remark-github-alerts";
 import { remarkHeadingIds } from "../lib/remark-heading-ids";
 import { remarkSupersub } from "../lib/remark-supersub";
-import { rehypeSourceLine, scrollPreviewToLine, type PreviewScrollTarget } from "../lib/source-line";
+import {
+  collectMapped,
+  rehypeSourceLine,
+  scrollPreviewToLine,
+  type PreviewScrollTarget,
+} from "../lib/source-line";
 import { FrontmatterCard } from "./FrontmatterCard";
 import { createMarkdownComponents } from "./markdown-components";
 import { useI18n, type Locale } from "../i18n";
@@ -45,6 +50,20 @@ const sanitizeSchema = {
     ],
   },
 };
+
+/** Registry keys for the find highlights; the matching ::highlight() rules live
+ *  in index.css and must use the same names. */
+const FIND_HIGHLIGHT = "moye-find";
+const FIND_HIGHLIGHT_ACTIVE = "moye-find-active";
+
+// The CSS Custom Highlight API is newer than the DOM typings this project
+// compiles against, so describe only the two pieces actually used rather than
+// widening anything to `any`.
+interface HighlightRegistry {
+  set(name: string, highlight: unknown): void;
+  delete(name: string): void;
+}
+type HighlightCtor = new (...ranges: Range[]) => unknown;
 
 function estimateHeight(section: DocSection): number {
   const lines = Math.max(1, section.endLine - section.startLine + 1);
@@ -113,6 +132,7 @@ export interface PreviewAnchor {
 
 export interface MarkdownPreviewHandle {
   scrollToHeading: (id: string) => void;
+  scrollToLine: (line: number) => void;
   syncToEditor: (target: PreviewScrollTarget) => void;
   captureAnchor: () => PreviewAnchor | null;
   restoreAnchor: (anchor: PreviewAnchor) => void;
@@ -123,10 +143,27 @@ interface MarkdownPreviewProps {
   isDark: boolean;
   filePath?: string | null;
   scrollParentRef: RefObject<HTMLElement | null>;
+  /** Current find query, highlighted in place while the find bar is open. */
+  findQuery?: string;
+  /** Section holding the active match, so it can be tinted differently. */
+  findSection?: number;
+  /** Zero-based index of the active match among the hits in that section. */
+  findOrdinal?: number;
 }
 
 const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewProps>(
-  function MarkdownPreview({ content, isDark, filePath, scrollParentRef }, ref) {
+  function MarkdownPreview(
+    {
+      content,
+      isDark,
+      filePath,
+      scrollParentRef,
+      findQuery = "",
+      findSection = -1,
+      findOrdinal = -1,
+    },
+    ref,
+  ) {
     const { locale } = useI18n();
     const parsed = useMemo(() => parseDocument(content), [content]);
     const heightsRef = useRef<number[]>([]);
@@ -260,6 +297,64 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
       return () => ro.disconnect();
     }, [range.start, range.end, applyHeight]);
 
+    // Find hits are painted with the CSS Custom Highlight API rather than by
+    // wrapping matches in <mark>. That DOM belongs to React, and mutating it
+    // underneath React is exactly how you get "removeChild: the node to be
+    // removed is not a child of this node" once the virtual list unmounts a
+    // section mid-highlight. Ranges are read-only, so on a host without the API
+    // the only loss is the tint — jumping to a match still works.
+    useLayoutEffect(() => {
+      const registry = (CSS as unknown as { highlights?: HighlightRegistry }).highlights;
+      const Ctor = (globalThis as unknown as { Highlight?: HighlightCtor }).Highlight;
+      if (!registry || !Ctor) return;
+      registry.delete(FIND_HIGHLIGHT);
+      registry.delete(FIND_HIGHLIGHT_ACTIVE);
+
+      const needle = findQuery.trim().toLowerCase();
+      const list = listRef.current;
+      if (!needle || !list) return;
+
+      const plain: Range[] = [];
+      const active: Range[] = [];
+      const sections = [...list.querySelectorAll<HTMLElement>("[data-section-index]")];
+      for (const section of sections) {
+        const index = Number(section.dataset.sectionIndex);
+        const ranges: Range[] = [];
+        const walker = document.createTreeWalker(section, NodeFilter.SHOW_TEXT);
+        let node = walker.nextNode();
+        while (node) {
+          const text = node.nodeValue ?? "";
+          const lower = text.toLowerCase();
+          let from = 0;
+          for (;;) {
+            const at = lower.indexOf(needle, from);
+            if (at < 0) break;
+            const range = document.createRange();
+            range.setStart(node, at);
+            range.setEnd(node, at + needle.length);
+            ranges.push(range);
+            from = at + needle.length;
+          }
+          node = walker.nextNode();
+        }
+        // Within the active section pick exactly one hit: the ordinal computed
+        // from the source. Rendered text is not byte-identical to the source
+        // (markdown syntax is stripped), so the ordinal is an approximation —
+        // when it lands out of range, fall back to the first hit rather than
+        // showing nothing as "current".
+        let chosen = -1;
+        if (index === findSection && ranges.length > 0) {
+          chosen = findOrdinal >= 0 && findOrdinal < ranges.length ? findOrdinal : 0;
+        }
+        ranges.forEach((range, i) => {
+          if (i === chosen) active.push(range);
+          else plain.push(range);
+        });
+      }
+      if (plain.length) registry.set(FIND_HIGHLIGHT, new Ctor(...plain));
+      if (active.length) registry.set(FIND_HIGHLIGHT_ACTIVE, new Ctor(...active));
+    }, [findQuery, findSection, findOrdinal, range, parsed.sections]);
+
     const sectionOffset = (index: number) => {
       let y = 0;
       for (let i = 0; i < index; i++) y += heightsRef.current[i] ?? 0;
@@ -339,6 +434,39 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
         pendingJump.current = id;
         revealIndex(index);
         scrollToSectionIndex(index, "auto");
+      },
+      scrollToLine: (line: number) => {
+        const index = parsed.sections.findIndex(
+          (section) => line >= section.startLine && line <= section.endLine,
+        );
+        if (index < 0) return;
+        // Reveal the section first: its line markers do not exist in the DOM
+        // until it is mounted, so scrolling straight away would aim at a stale
+        // offset. `go` retries briefly while the virtual list catches up.
+        pendingJump.current = null;
+        revealIndex(index);
+        let tries = 0;
+        const go = () => {
+          const root = scrollParentRef.current;
+          if (!root) return;
+          const mapped = collectMapped(root);
+          let best: { el: HTMLElement; line: number } | null = null;
+          for (const item of mapped) {
+            if (item.line > line + 1) break;
+            best = item; // sorted by line, so the last one at or above wins
+          }
+          if (!best) {
+            if (tries++ < 6) window.setTimeout(go, 40);
+            return;
+          }
+          const top =
+            best.el.getBoundingClientRect().top -
+            root.getBoundingClientRect().top +
+            root.scrollTop -
+            96;
+          root.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+        };
+        requestAnimationFrame(go);
       },
       syncToEditor: (target: PreviewScrollTarget) => {
         const root = scrollParentRef.current;
