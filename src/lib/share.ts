@@ -1,6 +1,7 @@
-import { canShare, share } from "@vnidrop/tauri-plugin-share";
+import { share } from "@vnidrop/tauri-plugin-share";
 import { downloadText, isTauri } from "./platform";
 import { writeClipboardText } from "./clipboard";
+import { recordError } from "./diagnostics";
 
 export type ShareOutcome = "shared" | "copied" | "downloaded" | "unavailable";
 
@@ -68,15 +69,21 @@ export async function shareDocument(opts: {
   const { title, markdown, filename } = opts;
 
   // 1. The native sheet, inside the app.
+  //
+  // Deliberately does not gate on the plugin's `canShare`: that is one more IPC
+  // that can go wrong, and it was observed returning false after the app had
+  // been chosen as its own share target — which quietly downgraded every later
+  // share to the clipboard. Attempting the share and treating a throw as "not
+  // available" is both simpler and harder to wedge.
   if (isTauri()) {
     try {
-      const payload = { title, text: markdown };
-      if (await canShare(payload)) {
-        await share(payload);
-        return "shared";
-      }
-    } catch {
-      /* not available in this build — keep falling back */
+      await share({ title, text: markdown });
+      return "shared";
+    } catch (err) {
+      // Record why, always. A silent fall back to the clipboard looks exactly
+      // like "the share button is broken", and the diagnostics report is the
+      // only way to tell those apart after the fact.
+      recordError(`share: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

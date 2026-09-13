@@ -1,9 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { downloadText, writeClipboardText, canShare, nativeShare, state } = vi.hoisted(() => ({
+const { downloadText, writeClipboardText, nativeShare, state } = vi.hoisted(() => ({
   downloadText: vi.fn(),
   writeClipboardText: vi.fn(),
-  canShare: vi.fn(),
   nativeShare: vi.fn(),
   state: { tauri: false },
 }));
@@ -12,9 +11,10 @@ vi.mock("./platform", () => ({ downloadText, isTauri: () => state.tauri }));
 // Mocked so this file exercises the *fallback order*, not the clipboard wrapper
 // or the plugin, and so no Tauri code is loaded into a node test.
 vi.mock("./clipboard", () => ({ writeClipboardText }));
-vi.mock("@vnidrop/tauri-plugin-share", () => ({ canShare, share: nativeShare }));
+vi.mock("@vnidrop/tauri-plugin-share", () => ({ share: nativeShare }));
 
 import { shareDocument } from "./share";
+import { diagnosticsText } from "./diagnostics";
 
 const opts = { title: "a.md", markdown: "# hi", filename: "a.md" };
 
@@ -25,7 +25,6 @@ function setNavigator(value: Record<string, unknown>): void {
 beforeEach(() => {
   state.tauri = false;
   writeClipboardText.mockResolvedValue(undefined);
-  canShare.mockResolvedValue(false);
   nativeShare.mockResolvedValue(undefined);
 });
 
@@ -33,36 +32,37 @@ afterEach(() => {
   vi.unstubAllGlobals();
   downloadText.mockClear();
   writeClipboardText.mockClear();
-  canShare.mockClear();
   nativeShare.mockClear();
 });
 
 describe("the native sheet (inside the app)", () => {
-  it("is the first choice when the platform offers it", async () => {
+  it("is the first choice when it works", async () => {
     // No embedded WebView implements the Web Share API, so without this the
     // share button can never open a sheet on a phone.
     state.tauri = true;
-    canShare.mockResolvedValue(true);
     setNavigator({ userAgent: "Android" });
     expect(await shareDocument(opts)).toBe("shared");
     expect(nativeShare).toHaveBeenCalledWith({ title: "a.md", text: "# hi" });
     expect(writeClipboardText).not.toHaveBeenCalled();
   });
 
-  it("falls through when the platform cannot share", async () => {
+  it("does not consult canShare first", async () => {
+    // Gating on `canShare` was observed returning false once the app had been
+    // picked as its own share target, which silently downgraded every later
+    // share to the clipboard. The call itself is the only reliable probe.
     state.tauri = true;
-    canShare.mockResolvedValue(false);
     setNavigator({ userAgent: "Android" });
-    expect(await shareDocument(opts)).toBe("copied");
-    expect(nativeShare).not.toHaveBeenCalled();
+    await shareDocument(opts);
+    expect(nativeShare).toHaveBeenCalledOnce();
   });
 
-  it("falls through when the sheet throws", async () => {
+  it("records why it fell back, so a report can explain it", async () => {
     state.tauri = true;
-    canShare.mockResolvedValue(true);
-    nativeShare.mockRejectedValue(new Error("boom"));
+    nativeShare.mockRejectedValue(new Error("activity is gone"));
     setNavigator({ userAgent: "Android" });
     expect(await shareDocument(opts)).toBe("copied");
+    // A silent fall back is indistinguishable from a broken button.
+    expect(diagnosticsText({})).toContain("share: activity is gone");
   });
 });
 

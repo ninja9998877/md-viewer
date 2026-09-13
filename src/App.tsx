@@ -71,6 +71,17 @@ function resolveRefPath(ref: string, docPath: string | null): string | null {
   return joinPath(dir, file);
 }
 
+/** True for the placeholder document shown before anything is opened. It is
+ *  not something to save, and offering "save" for it is just confusing. */
+function isWelcomeText(text: string): boolean {
+  return (
+    text === zh.welcome ||
+    text === zh.welcomeMobile ||
+    text === en.welcome ||
+    text === en.welcomeMobile
+  );
+}
+
 export default function App() {
   const { t, locale, setLocale } = useI18n();
   const [content, setContent] = useState(t.welcome);
@@ -87,6 +98,9 @@ export default function App() {
   const [findIndex, setFindIndex] = useState(0);
   const [activeHeading, setActiveHeading] = useState("");
   const [previewContent, setPreviewContent] = useState(content);
+  // A display name that is not derived from a path — used when the document
+  // has no file behind it yet (the clipboard route).
+  const [fileLabel, setFileLabel] = useState<string | null>(null);
 
   const contentRef = useRef(content);
   const filePathRef = useRef(filePath);
@@ -129,7 +143,7 @@ export default function App() {
   findOpenRef.current = findOpen;
   const [reader, setReader] = useState<ReaderSettings>(() => loadReaderSettings());
   const lineCount = useMemo(() => countLines(content), [content]);
-  const fileName = fileNameOf(filePath, t.untitled);
+  const fileName = fileLabel ?? fileNameOf(filePath, t.untitled);
   const displayName = isDirty ? `${fileName} •` : fileName;
 
   // Search runs over the source text, so it also finds hits the virtual list has
@@ -278,6 +292,7 @@ export default function App() {
     setContent(text);
     setPreviewContent(text);
     setFilePath(path);
+    setFileLabel(null);
     setIsDirty(false);
     setViewMode(mode);
     setActiveHeading("");
@@ -339,10 +354,11 @@ export default function App() {
       return;
     }
     if (!(await confirmDiscard())) return;
-    // No real file behind this: use the label as the document name (the desktop
-    // has no separate resolved-name state) so the title bar says where it came
-    // from, and let saving fall through to Save As (see handleSave).
-    loadText(text, t.clipboardTitle, "preview");
+    // No path: this text came from the clipboard rather than a file, so the
+    // name is carried separately and saving falls through to Save As — which is
+    // the only way to keep it, since nothing is on disk yet.
+    loadText(text, null, "preview");
+    setFileLabel(t.clipboardTitle);
     setToast(t.clipboardOpened);
   }, [
     confirmDiscard,
@@ -438,11 +454,14 @@ export default function App() {
       }
       const selected = await save({
         filters: [{ name: "Markdown", extensions: ["md"] }],
-        defaultPath: filePathRef.current || "untitled.md",
+        // Named after what is on screen — a document read from the clipboard
+        // has no path, and "untitled.md" tells the reader nothing.
+        defaultPath: filePathRef.current || `${fileName}.md`,
       });
       if (selected) {
         await writeMarkdownFile(selected, current);
         setFilePath(selected);
+        setFileLabel(null);
         setIsDirty(false);
       }
     } catch (err) {
@@ -463,7 +482,7 @@ export default function App() {
     } catch {
       await handleSaveAs();
     }
-  }, [handleSaveAs]);
+  }, [fileName, handleSaveAs]);
 
   const handleNew = useCallback(async () => {
     if (!(await confirmDiscard())) return;
@@ -879,7 +898,9 @@ export default function App() {
                 t={t}
                 locale={locale}
                 recent={recent}
-                canSave={viewMode === "split"}
+                // Shown when there is something to save: unsaved edits, or a
+                // document with no file behind it yet (the clipboard route).
+                canSave={isDirty || (!filePath && !isWelcomeText(content))}
                 tocOpen={tocOpen}
                 isDark={isDark}
                 reader={reader}
