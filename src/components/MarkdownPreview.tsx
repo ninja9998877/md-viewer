@@ -68,6 +68,11 @@ const sanitizeSchema = {
 const FIND_HIGHLIGHT = "moye-find";
 const FIND_HIGHLIGHT_ACTIVE = "moye-find-active";
 
+/** How long a heading jump may keep the scroll handler quiet. Long enough for a
+ *  smooth scroll to finish, short enough that a lost heading cannot wedge the
+ *  virtual list for the rest of the session. */
+const JUMP_GUARD_MS = 1200;
+
 // The CSS Custom Highlight API is newer than the DOM typings this project
 // compiles against, so describe only the two pieces actually used rather than
 // widening anything to `any`.
@@ -190,6 +195,8 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
     const heightsByKey = useRef(new Map<string, number>());
     const sectionsRef = useRef(parsed.sections);
     const pendingJump = useRef<string | null>(null);
+    const pendingJumpTimer = useRef(0);
+    const pendingSync = useRef<PreviewScrollTarget | null>(null);
     const listRef = useRef<HTMLDivElement>(null);
     const recomputeRaf = useRef(0);
     const syncingRef = useRef(false);
@@ -296,8 +303,18 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
       return () => {
         root.removeEventListener("scroll", onScroll);
         window.removeEventListener("resize", onScroll);
-        if (recomputeRaf.current) cancelAnimationFrame(recomputeRaf.current);
+        // The handle has to be zeroed, not just cancelled. `scheduleRecompute`
+        // treats a non-zero value as "a frame is already booked" and returns —
+        // so a cancelled-but-not-cleared handle wedges it for the rest of the
+        // session: the window stops following the reader while the scroll
+        // position keeps moving, and they end up looking at the spacer that
+        // stands in for the rest of the document. A blank page.
+        if (recomputeRaf.current) {
+          cancelAnimationFrame(recomputeRaf.current);
+          recomputeRaf.current = 0;
+        }
         window.clearTimeout(syncTimer.current);
+        window.clearTimeout(pendingJumpTimer.current);
       };
     }, [recompute, scheduleRecompute, parsed.sections, scrollParentRef]);
 
@@ -432,10 +449,90 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
       const root = scrollParentRef.current;
       if (!el || !root) return;
       pendingJump.current = null;
+      window.clearTimeout(pendingJumpTimer.current);
       const top =
         el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop - 16;
       root.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
     }, [range, parsed.sections, scrollParentRef]);
+
+    /**
+     * Move both the scroll position and the rendered window onto `target`.
+     *
+     * The two must move together or the reader sees a blank page: the window is
+     * what puts content in the DOM, and the scroll position is where they are
+     * looking. Move only the window and they are staring at the spacer standing
+     * in for everything else.
+     *
+     * On a phone the preview is `display: none` for as long as the editor is
+     * open — no scroll box at all, so `scrollTop` is pinned at 0 and every write
+     * to it is discarded. Windowing to the line the editor is on would therefore
+     * *only* move the window, which is exactly the blank page. Hold the target
+     * instead and let the size observer apply it once the reader is measurable
+     * again.
+     */
+    const applySync = useCallback(
+      (target: PreviewScrollTarget) => {
+        const root = scrollParentRef.current;
+        if (!root) return;
+        if (root.clientHeight === 0) {
+          pendingSync.current = target;
+          return;
+        }
+        pendingSync.current = null;
+        markSyncing();
+        if (target.atStart) {
+          root.scrollTop = 0;
+          scheduleRecompute();
+          return;
+        }
+        if (target.atEnd) {
+          root.scrollTop = Math.max(0, root.scrollHeight - root.clientHeight);
+          scheduleRecompute();
+          return;
+        }
+        const line = target.cursorLine || target.topLine;
+        const index = parsed.sections.findIndex(
+          (section) => line >= section.startLine && line <= section.endLine,
+        );
+        if (index >= 0) {
+          const approxTop = sectionOffset(index);
+          const next = visibleWindow(approxTop, root.clientHeight, heightsRef.current, 3);
+          const start = Math.min(next.start, Math.max(0, index - 1));
+          const end = Math.max(next.end, Math.min(parsed.sections.length, index + 2));
+          let padTop = 0;
+          for (let i = 0; i < start; i++) padTop += heightsRef.current[i] ?? 0;
+          let padBottom = 0;
+          for (let i = end; i < parsed.sections.length; i++) padBottom += heightsRef.current[i] ?? 0;
+          setRange({ start, end, padTop, padBottom });
+        }
+        requestAnimationFrame(() => {
+          scrollPreviewToLine(root, target);
+        });
+      },
+      [markSyncing, parsed.sections, scheduleRecompute, scrollParentRef],
+    );
+
+    // The scroll container's own size changes for reasons no scroll event
+    // reports: the preview is hidden while the editor is open on a phone and
+    // shown again on the way back, and on a desktop the reader goes from half
+    // width in split view to full width in reading view — which re-wraps every
+    // section and invalidates every cached height at once. Re-window on both,
+    // and apply a sync that had to be held while there was no scroll box.
+    useEffect(() => {
+      const root = scrollParentRef.current;
+      if (!root) return;
+      const ro = new ResizeObserver(() => {
+        if (root.clientHeight === 0) return;
+        const held = pendingSync.current;
+        if (held) {
+          applySync(held);
+          return;
+        }
+        scheduleRecompute();
+      });
+      ro.observe(root);
+      return () => ro.disconnect();
+    }, [applySync, scheduleRecompute, scrollParentRef]);
 
     useImperativeHandle(ref, () => ({
       captureAnchor: (): PreviewAnchor | null => {
@@ -480,7 +577,17 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
       scrollToHeading: (id: string) => {
         const index = parsed.sections.findIndex((section) => section.headingIds.includes(id));
         if (index < 0) return;
+        // While a jump is in flight the scroll handler stays out of the way, so
+        // the smooth scroll is not fought by the window recomputing underneath
+        // it. That guard must not be able to outlive the jump: if the heading
+        // never turns up in the DOM the effect below returns without clearing
+        // it, and a permanently set flag silently stops the window from ever
+        // following the reader again — they scroll into the spacer.
         pendingJump.current = id;
+        window.clearTimeout(pendingJumpTimer.current);
+        pendingJumpTimer.current = window.setTimeout(() => {
+          pendingJump.current = null;
+        }, JUMP_GUARD_MS);
         revealIndex(index);
         scrollToSectionIndex(index, "auto");
       },
@@ -493,6 +600,7 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
         // until it is mounted, so scrolling straight away would aim at a stale
         // offset. `go` retries briefly while the virtual list catches up.
         pendingJump.current = null;
+        window.clearTimeout(pendingJumpTimer.current);
         revealIndex(index);
         let tries = 0;
         const go = () => {
@@ -517,39 +625,7 @@ const MarkdownPreviewInner = forwardRef<MarkdownPreviewHandle, MarkdownPreviewPr
         };
         requestAnimationFrame(go);
       },
-      syncToEditor: (target: PreviewScrollTarget) => {
-        const root = scrollParentRef.current;
-        if (!root) return;
-        markSyncing();
-        if (target.atStart) {
-          root.scrollTop = 0;
-          scheduleRecompute();
-          return;
-        }
-        if (target.atEnd) {
-          root.scrollTop = Math.max(0, root.scrollHeight - root.clientHeight);
-          scheduleRecompute();
-          return;
-        }
-        const line = target.cursorLine || target.topLine;
-        const index = parsed.sections.findIndex(
-          (section) => line >= section.startLine && line <= section.endLine,
-        );
-        if (index >= 0) {
-          const approxTop = sectionOffset(index);
-          const next = visibleWindow(approxTop, root.clientHeight, heightsRef.current, 3);
-          const start = Math.min(next.start, Math.max(0, index - 1));
-          const end = Math.max(next.end, Math.min(parsed.sections.length, index + 2));
-          let padTop = 0;
-          for (let i = 0; i < start; i++) padTop += heightsRef.current[i] ?? 0;
-          let padBottom = 0;
-          for (let i = end; i < parsed.sections.length; i++) padBottom += heightsRef.current[i] ?? 0;
-          setRange({ start, end, padTop, padBottom });
-        }
-        requestAnimationFrame(() => {
-          scrollPreviewToLine(root, target);
-        });
-      },
+      syncToEditor: (target: PreviewScrollTarget) => applySync(target),
     }));
 
     const visible = parsed.sections.slice(range.start, range.end);

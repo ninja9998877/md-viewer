@@ -49,9 +49,18 @@ function linkify(value: string): HastNode[] | null {
   return out;
 }
 
-function walk(node: HastNode): void {
+/**
+ * `inherited` carries the skip decision down the tree rather than re-deriving it
+ * per node. Syntax highlighting runs before this and splits a code block into
+ * `<pre><code><span class="hljs-…">`, and the text actually holding the path sits
+ * inside that `span` — which is not in `SKIP_TAGS` itself. Deciding per node
+ * therefore linkified citations inside highlighted code, while plain unlabelled
+ * code (no spans at all) was correctly left alone. That difference is why the
+ * unit test, whose fixture is a bare `pre > code > text`, never saw it.
+ */
+function walk(node: HastNode, inherited = false): void {
   if (!node.children) return;
-  const skip = node.tagName !== undefined && SKIP_TAGS.has(node.tagName);
+  const skip = inherited || (node.tagName !== undefined && SKIP_TAGS.has(node.tagName));
   const next: HastNode[] = [];
   for (const child of node.children) {
     if (!skip && child.type === "text" && typeof child.value === "string") {
@@ -61,7 +70,7 @@ function walk(node: HastNode): void {
         continue;
       }
     }
-    if (child.type === "element") walk(child);
+    if (child.type === "element") walk(child, skip);
     next.push(child);
   }
   node.children = next;

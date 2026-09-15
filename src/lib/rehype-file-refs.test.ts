@@ -43,6 +43,19 @@ function run(tree: Node): Node {
 const links = (tree: Node): Node[] =>
   (tree.children?.[0].children ?? []).filter((child) => child.tagName === "a");
 
+/** Every anchor anywhere in the tree. `links` only looks one level down, which
+ *  is fine for a paragraph but silently empty for anything nested — a test
+ *  asserting "no links here" against a nested tree would pass no matter what. */
+const allLinks = (tree: Node): Node[] => {
+  const found: Node[] = [];
+  const visit = (node: Node) => {
+    if (node.tagName === "a") found.push(node);
+    node.children?.forEach(visit);
+  };
+  visit(tree);
+  return found;
+};
+
 describe("rehypeFileRefs", () => {
   it("wraps a citation in an anchor under a private scheme", () => {
     const tree = run(paragraph("see src/App.tsx:190 now"));
@@ -75,8 +88,45 @@ describe("rehypeFileRefs", () => {
     // Inside a code block a path is sample code, not a citation the reader can
     // act on — and linkifying it would fight the syntax highlighting.
     const tree = run(codeBlock("src/App.tsx:190"));
-    expect(links(tree)).toHaveLength(0);
+    expect(allLinks(tree)).toHaveLength(0);
     expect(tree.children?.[0].children?.[0].children?.[0].type).toBe("text");
+  });
+
+  it("leaves highlighted code alone, span and all", () => {
+    // The shape `rehypeHighlight` actually produces for a labelled fence: the
+    // text is nested one level deeper, inside a token span. Deciding "am I
+    // inside code?" per node instead of inheriting it made this case linkify
+    // while the unlabelled block above stayed clean — so the bug only showed up
+    // in code blocks that had a language.
+    const tree: Node = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "pre",
+          properties: {},
+          children: [
+            {
+              type: "element",
+              tagName: "code",
+              properties: { className: ["hljs", "language-ts"] },
+              children: [
+                {
+                  type: "element",
+                  tagName: "span",
+                  properties: { className: ["hljs-comment"] },
+                  children: [{ type: "text", value: "// src/App.tsx:190" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    run(tree);
+    expect(allLinks(tree)).toHaveLength(0);
+    // The text is still there, so this is not passing by having eaten it.
+    expect(JSON.stringify(tree)).toContain("src/App.tsx:190");
   });
 
   it("does not double-wrap something already linked", () => {
