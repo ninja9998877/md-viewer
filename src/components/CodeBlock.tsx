@@ -31,16 +31,30 @@ function diffLineClass(line: string): string {
 
 let mermaidTheme: "dark" | "neutral" | null = null;
 
-function ensureMermaid(isDark: boolean) {
+let mermaidFont: string | null = null;
+
+/**
+ * `fontFamily` has to be a real font stack, not `"inherit"`.
+ *
+ * Mermaid measures every label with a canvas *before* any SVG exists, and sizes
+ * the `foreignObject` that holds the text from that measurement. `"inherit"` is
+ * not a font it can resolve, so it measures in some default sans-serif while the
+ * SVG then renders the page's serif stack — a wider font. The result was labels
+ * with their last character clipped: "Measure it" drew as "Measure i", "Section
+ * mounted?" as "Section mounted:". Passing the resolved stack makes the
+ * measurement and the rendering agree.
+ */
+function ensureMermaid(isDark: boolean, fontFamily: string) {
   const theme = isDark ? "dark" : "neutral";
-  if (mermaidTheme === theme) return;
+  if (mermaidTheme === theme && mermaidFont === fontFamily) return;
   mermaid.initialize({
     startOnLoad: false,
     theme,
     securityLevel: "strict",
-    fontFamily: "inherit",
+    fontFamily: fontFamily || "sans-serif",
   });
   mermaidTheme = theme;
+  mermaidFont = fontFamily;
 }
 
 export function MermaidBlock({ code, isDark }: { code: string; isDark: boolean }) {
@@ -54,7 +68,9 @@ export function MermaidBlock({ code, isDark }: { code: string; isDark: boolean }
       if (!hostRef.current) return;
       setError(null);
       try {
-        ensureMermaid(isDark);
+        // Read the font off the host rather than hardcoding it: the diagram must
+        // be measured in whatever the reader's theme actually renders it in.
+        ensureMermaid(isDark, getComputedStyle(hostRef.current).fontFamily);
         const id = `mmd-${reactId}-${Math.random().toString(36).slice(2, 8)}`;
         const { svg } = await mermaid.render(id, code);
         if (!cancelled && hostRef.current) {

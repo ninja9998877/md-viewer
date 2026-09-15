@@ -1020,6 +1020,17 @@ button:active {
   height: auto;
 }
 
+/* Mermaid sizes each label's foreignObject from its own text measurement, and
+   for some shapes — a diamond with a long label, the small yes/no boxes on an
+   edge — it measures a few pixels narrow. The default `overflow: hidden` then
+   silently eats the last character: "Section mounted?" rendered as
+   "Section mounted". Letting the text paint outside its measured box is the
+   smaller error, and every one of those shapes has margin to spare.
+   (`fontFamily` in CodeBlock.tsx removes the common case; this covers the rest.) */
+.mermaid-card foreignObject {
+  overflow: visible;
+}
+
 .mermaid-card--error {
   color: var(--alert-caution-fg);
   background: var(--alert-caution-bg);
