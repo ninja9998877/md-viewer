@@ -1,4 +1,4 @@
 [[permission]]
 identifier = "allow-md-files"
 description = "Read and write markdown files the user opened or saved"
-commands.allow = ["read_markdown", "write_markdown", "associate_markdown_files"]
+commands.allow = ["read_markdown", "write_markdown", "watch_markdown", "associate_markdown_files", "take_launch_files"]
