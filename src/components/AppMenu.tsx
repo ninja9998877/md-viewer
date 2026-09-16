@@ -1,11 +1,21 @@
 import { useEffect, useRef, useState } from "react";
-import type { Locale, Messages } from "../i18n";
+import { LOCALES, LOCALE_LABELS, type Locale, type Messages } from "../i18n";
 import type { PaperWidth, ReaderSettings } from "../lib/reader-settings";
 import type { RecentFile } from "../lib/recent-files";
 
 /** How long a press must last before it turns into a delete prompt. Long enough
  *  not to fire while scrolling the list, short enough not to feel stuck. */
 const LONG_PRESS_MS = 500;
+
+/** Full language names, for the tooltip and the accessible name only. Written in
+ *  each language, so they are not translated either. */
+const LANGUAGE_NAMES: Record<Locale, string> = {
+  zh: "中文",
+  "zh-Hant": "繁體中文",
+  en: "English",
+  ja: "日本語",
+  de: "Deutsch",
+};
 
 interface AppMenuProps {
   t: Messages;
@@ -24,7 +34,7 @@ interface AppMenuProps {
   onForgetRecent: (path: string) => void;
   version: string;
   onClipboard: () => void;
-  onDiagnostics: () => void;
+  onFeedback: () => void;
   onToggleToc: () => void;
   onFont: (next: number) => void;
   onPaper: (paper: PaperWidth) => void;
@@ -50,7 +60,7 @@ export function AppMenu({
   onForgetRecent,
   version,
   onClipboard,
-  onDiagnostics,
+  onFeedback,
   onToggleToc,
   onFont,
   onPaper,
@@ -221,12 +231,21 @@ export function AppMenu({
       <div className="app-menu__row">
         <span>{t.language}</span>
         <div className="app-menu__pills">
-          <button type="button" className={locale === "zh" ? "is-on" : ""} onClick={() => onLocale("zh")}>
-            {t.langZh}
-          </button>
-          <button type="button" className={locale === "en" ? "is-on" : ""} onClick={() => onLocale("en")}>
-            {t.langEn}
-          </button>
+          {LOCALES.map((code) => (
+            <button
+              key={code}
+              type="button"
+              // The full name goes in the tooltip and the accessible name; the
+              // button shows the short form, because five full names do not fit.
+              // Each is written in its own language, so it is not translated.
+              title={LANGUAGE_NAMES[code]}
+              aria-label={LANGUAGE_NAMES[code]}
+              className={locale === code ? "is-on" : ""}
+              onClick={() => onLocale(code)}
+            >
+              {LOCALE_LABELS[code]}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -243,8 +262,8 @@ export function AppMenu({
 
       <div className="app-menu__sep" />
       <div className="app-menu__group">
-        <button type="button" role="menuitem" onClick={onDiagnostics}>
-          {t.diagnostics}
+        <button type="button" role="menuitem" onClick={onFeedback}>
+          {t.feedback}
         </button>
       </div>
       {/* Which build is on this device — the first thing worth knowing when a

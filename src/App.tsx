@@ -31,6 +31,7 @@ import { findMatches } from "./lib/find";
 import { loadReadingPosition, saveReadingPosition } from "./lib/reading-position";
 import { joinPath } from "./lib/resolve-image";
 import { readClipboardText, writeClipboardText } from "./lib/clipboard";
+import { openFeedbackPage } from "./lib/feedback";
 import { openPath } from "@tauri-apps/plugin-opener";
 import {
   countLines,
@@ -41,7 +42,7 @@ import {
   isTypingTarget,
   isWindows,
 } from "./lib/platform";
-import { en, fmt, useI18n, zh } from "./i18n";
+import { fmt, isWelcomeText, useI18n } from "./i18n";
 
 type ViewMode = "preview" | "split";
 
@@ -57,6 +58,12 @@ function readTheme(): boolean {
  *  Generous on purpose: a slow disk is not an error. */
 const READ_TIMEOUT_MS = 20_000;
 
+/** How long the "diagnostics copied" toast stays up before the browser takes the
+ *  screen. The two halves of the feedback flow are useless apart: an issue saying
+ *  "it broke" cannot be acted on, and a clipboard nobody knows about is never
+ *  pasted. */
+const REVIEW_HANDOFF_MS = 1100;
+
 /**
  * Turn a `path/to/file.ts:190` citation into something the OS can open, or null
  * when there is nothing to resolve against — a document that came from the
@@ -69,17 +76,6 @@ function resolveRefPath(ref: string, docPath: string | null): string | null {
   const file = ref.replace(/:\d+(?::\d+)?$/, "");
   if (/^([a-zA-Z]:[\\/]|[\\/])/.test(file)) return file;
   return joinPath(dir, file);
-}
-
-/** True for the placeholder document shown before anything is opened. It is
- *  not something to save, and offering "save" for it is just confusing. */
-function isWelcomeText(text: string): boolean {
-  return (
-    text === zh.welcome ||
-    text === zh.welcomeMobile ||
-    text === en.welcome ||
-    text === en.welcomeMobile
-  );
 }
 
 export default function App() {
@@ -101,6 +97,9 @@ export default function App() {
   // A display name that is not derived from a path — used when the document
   // has no file behind it yet (the clipboard route).
   const [fileLabel, setFileLabel] = useState<string | null>(null);
+  /** True while a document is being read, so a slow disk looks like work rather
+   *  than a dead menu item. */
+  const [opening, setOpening] = useState(false);
 
   const contentRef = useRef(content);
   const filePathRef = useRef(filePath);
@@ -110,6 +109,11 @@ export default function App() {
   const progressRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<MarkdownPreviewHandle>(null);
   const lastLaunchRef = useRef<string | null>(null);
+  // Bumped synchronously on every load so async work can tell whether it is
+  // still the newest request. Do NOT compare against `filePathRef` for this:
+  // that ref is only assigned during render, so on the very first open it is
+  // still `null` when the read resolves and the guard would drop the result.
+  const loadTokenRef = useRef(0);
   const lastEditorScroll = useRef<EditorScrollInfo>({
     topLine: 1,
     bottomLine: 1,
@@ -218,10 +222,11 @@ export default function App() {
   }, [fileName, isDirty, t.productName]);
 
   useEffect(() => {
-    if (contentRef.current === zh.welcome || contentRef.current === en.welcome) {
-      setContent(t.welcome);
-      setPreviewContent(t.welcome);
-    }
+    // Only re-translate the placeholder. Anything else is a document the reader
+    // opened, and switching language must not throw it away.
+    if (!isWelcomeText(contentRef.current)) return;
+    setContent(t.welcome);
+    setPreviewContent(t.welcome);
   }, [locale, t.welcome]);
 
   // In-app dialogs. `window.alert` / `window.confirm` are not merely ugly here:
@@ -247,27 +252,46 @@ export default function App() {
       .catch(() => setVersion("dev"));
   }, []);
 
-  const copyDiagnostics = useCallback(async () => {
-    const text = diagnosticsText({
+  /**
+   * Put the diagnostics on the clipboard, then send the reader to the repo's
+   * new-issue page to say what went wrong.
+   *
+   * The copy half has to land before the browser takes the screen, which is what
+   * the delay is for: otherwise the app is backgrounded on the same frame the
+   * copy happens and the reader arrives at an empty issue box with no idea it is
+   * waiting for them.
+   *
+   * Note the fields: no document path. An issue is public and permanent, and a
+   * path carries whatever the reader named the file. Length and character count
+   * still separate a small file from a large one.
+   */
+  const sendFeedback = useCallback(async () => {
+    const report = diagnosticsText({
       app: `${t.productName} ${version || "?"}`,
       runtime: isTauri() ? "tauri" : "web",
       userAgent: navigator.userAgent,
       locale,
-      document: filePathRef.current ?? "(none)",
       lines: String(countLines(contentRef.current)),
       chars: String(contentRef.current.length),
       recents: String(loadRecent().length),
     });
     try {
-      await writeClipboardText(text);
-      setToast(t.diagnosticsCopied);
+      await writeClipboardText(report);
     } catch {
-      // No clipboard in this host — show it instead so it can still be selected
-      // by hand. Deliberately bypasses `showAlert` so the report does not become
-      // its own "last error".
-      setDialog({ kind: "alert", message: text });
+      // No clipboard in this host. Show the text so it can still be selected by
+      // hand, and stop — sending them to an issue box with nothing to paste would
+      // be worse than not sending them at all. Deliberately bypasses `showAlert`
+      // so the report does not become its own "last error".
+      setDialog({ kind: "alert", message: report });
+      return;
     }
-  }, [locale, t.diagnosticsCopied, t.productName, version]);
+    setToast(t.feedbackCopied);
+    window.setTimeout(() => {
+      void openFeedbackPage().catch((err) => {
+        recordError(`review: ${err instanceof Error ? err.message : String(err)}`);
+      });
+    }, REVIEW_HANDOFF_MS);
+  }, [locale, t.feedbackCopied, t.productName, version]);
 
   const askConfirm = useCallback(
     (message: string) =>
@@ -325,17 +349,27 @@ export default function App() {
 
   const loadPath = useCallback(
     async (path: string, mode: ViewMode = "preview") => {
-      // A deadline rather than an open-ended wait: see READ_TIMEOUT_MS.
-      const text = await withTimeout(readMarkdownFile(path), READ_TIMEOUT_MS);
-      loadText(text, path, mode);
-      restoreReadingPosition(path);
-      const label = fileNameOf(path, t.untitled);
-      setRecent(rememberRecent(path, label));
-      // A no-op for plain paths, which is every path on desktop — see
-      // `isDurablePath`. On mobile the grant behind a `content://` or a
-      // security-scoped `file://` dies with this process, so the copy is the
-      // only thing that will let a later launch reopen this document.
-      saveSnapshot(path, label, text);
+      const token = ++loadTokenRef.current;
+      setOpening(true);
+      try {
+        // A deadline rather than an open-ended wait: see READ_TIMEOUT_MS.
+        const text = await withTimeout(readMarkdownFile(path), READ_TIMEOUT_MS);
+        // Another file may have been opened while this one was being read —
+        // without this the slower read wins and the reader sees the wrong file.
+        if (token !== loadTokenRef.current) return;
+        loadText(text, path, mode);
+        restoreReadingPosition(path);
+        const label = fileNameOf(path, t.untitled);
+        setRecent(rememberRecent(path, label));
+        // A no-op for plain paths, which is every path on desktop — see
+        // `isDurablePath`. On mobile the grant behind a `content://` or a
+        // security-scoped `file://` dies with this process, so the copy is the
+        // only thing that will let a later launch reopen this document.
+        saveSnapshot(path, label, text);
+      } finally {
+        // Only the newest load owns the indicator.
+        if (token === loadTokenRef.current) setOpening(false);
+      }
     },
     [loadText, t.untitled],
   );
@@ -587,7 +621,11 @@ export default function App() {
       try {
         await loadPath(path, "preview");
       } catch (err) {
-        console.error("Failed to open launch file:", err);
+        // Silence here read as "the app ignored my double-click".
+        const message = err instanceof Error ? err.message : String(err);
+        showAlert(
+          err instanceof TimeoutError ? t.openTimeout : fmt(t.openFailed, { message }),
+        );
       }
     };
 
@@ -621,7 +659,7 @@ export default function App() {
       cancelled = true;
       unlisten?.();
     };
-  }, [loadPath, restoreLastDocument]);
+  }, [loadPath, restoreLastDocument, t.openFailed, t.openTimeout]);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -693,6 +731,16 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  // Defined above the keyboard handler on purpose: the shortcuts and the buttons
+  // must be the *same* code path. They were not, and the two drifted — E skipped
+  // the flag that makes the editor drive the preview, which the button set.
+  const enterEdit = useCallback(() => {
+    followEditor.current = true;
+    setViewMode("split");
+  }, []);
+
+  const exitEdit = useCallback(() => setViewMode("preview"), []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
@@ -736,14 +784,17 @@ export default function App() {
           return;
         }
         if (viewModeRef.current === "split") {
-          setViewMode("preview");
+          exitEdit();
         }
         return;
       }
       if (typing || mod) return;
       if (e.key.toLowerCase() === "e") {
         e.preventDefault();
-        setViewMode((m) => (m === "preview" ? "split" : "preview"));
+        // Through the shared handlers, so the keyboard cannot drift from the
+        // buttons again.
+        if (viewModeRef.current === "preview") enterEdit();
+        else exitEdit();
         return;
       }
       if (e.key.toLowerCase() === "o") {
@@ -753,7 +804,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handleNew, handleOpen, handleSave, closeFind]);
+  }, [closeFind, enterEdit, exitEdit, handleNew, handleOpen, handleSave]);
 
   useEffect(() => {
     const prevent = (e: DragEvent) => {
@@ -902,12 +953,6 @@ export default function App() {
     }
   };
 
-  const enterEdit = () => {
-    followEditor.current = true;
-    setViewMode("split");
-  };
-  const exitEdit = () => setViewMode("preview");
-
   const onPreviewDoubleClick = () => {
     if (viewMode !== "preview") return;
     const sel = window.getSelection();
@@ -989,9 +1034,9 @@ export default function App() {
                   setMenuOpen(false);
                   void openClipboard();
                 }}
-                onDiagnostics={() => {
+                onFeedback={() => {
                   setMenuOpen(false);
-                  void copyDiagnostics();
+                  void sendFeedback();
                 }}
                 onToggleToc={() => {
                   setMenuOpen(false);
@@ -1012,6 +1057,7 @@ export default function App() {
 
         <div className="chrome__title" title={filePath ?? t.unsavedDoc}>
           {displayName}
+          {opening ? <span className="chrome__opening">{t.opening}</span> : null}
           {isDirty ? <span className="chrome__dirty">{t.unsaved}</span> : null}
         </div>
 

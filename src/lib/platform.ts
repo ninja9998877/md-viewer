@@ -15,6 +15,18 @@ export function isWindows(): boolean {
   return /Win/i.test(navigator.userAgent) || /Windows/i.test(navigator.platform);
 }
 
+/**
+ * True on the Android / iOS builds, where the browser fallbacks do not apply.
+ *
+ * Kept here rather than beside its caller: it used to live in `share.ts` on the
+ * mobile side with its own regex, which is how "is this a phone?" quietly becomes
+ * two answers that disagree the first time only one of them is edited.
+ */
+export function isMobile(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
 export function fileNameOf(path: string | null, untitled = "Untitled"): string {
   if (!path) return untitled;
   return path.split(/[\\/]/).pop() || path;

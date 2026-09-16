@@ -13,7 +13,11 @@ let lastError: string | null = null;
 export function recordError(message: string): void {
   // Collapse whitespace: these strings are built for display and often carry
   // newlines that would break a one-line-per-field report.
-  lastError = message.replace(/\s+/g, " ").trim();
+  const cleaned = message.replace(/\s+/g, " ").trim();
+  // Whitespace-only is not an error, it is the absence of one. Keeping the empty
+  // string would print `lastError: ` and read as a field that failed to fill in,
+  // rather than as "nothing went wrong".
+  lastError = cleaned || null;
 }
 
 export function diagnosticsText(fields: Record<string, string>): string {

@@ -321,6 +321,14 @@ button:active {
   font-size: 12px;
 }
 
+/* Same slot as the unsaved marker, but muted: "opening" is a passing state, not
+   something the reader has to act on. */
+.chrome__opening {
+  margin-left: 8px;
+  font-size: 12px;
+  opacity: 0.65;
+}
+
 /* Find bar: sits directly under the header, above the document. */
 .find-bar {
   display: flex;
@@ -474,7 +482,9 @@ button:active {
   border-color: transparent;
   background: var(--accent);
   color: #fff;
-}/* Image lightbox — the controlled replacement for pinch-zoom, which is off
+}
+
+/* Image lightbox — the controlled replacement for pinch-zoom, which is off
    app-wide because the WebView could get stuck zoomed with no way to pan out. */
 .md-img {
   cursor: zoom-in;
@@ -642,7 +652,10 @@ button:active {
   overflow-y: auto;
   overflow-anchor: none;
   scrollbar-gutter: stable;
-  overscroll-behavior: contain;
+  /* `contain` only stops the scroll from chaining to the parent element; the
+     WebKit view still rubber-bands this container itself. `none` removes that
+     bounce, so the end of a document is a hard stop rather than a spring. */
+  overscroll-behavior: none;
   padding: 28px 18px calc(96px + env(safe-area-inset-bottom, 0px));
   scroll-padding-top: 20px;
 }

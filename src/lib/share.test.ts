@@ -7,7 +7,13 @@ const { downloadText, writeClipboardText, nativeShare, state } = vi.hoisted(() =
   state: { tauri: false },
 }));
 
-vi.mock("./platform", () => ({ downloadText, isTauri: () => state.tauri }));
+// `isMobile` comes through untouched: it reads `navigator`, which each case
+// stubs, and these tests are about the fallback order rather than a second copy
+// of the user-agent regex.
+vi.mock("./platform", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./platform")>();
+  return { ...actual, downloadText, isTauri: () => state.tauri };
+});
 // Mocked so this file exercises the *fallback order*, not the clipboard wrapper
 // or the plugin, and so no Tauri code is loaded into a node test.
 vi.mock("./clipboard", () => ({ writeClipboardText }));

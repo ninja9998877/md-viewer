@@ -1,5 +1,5 @@
 import { share } from "@vnidrop/tauri-plugin-share";
-import { downloadText, isTauri } from "./platform";
+import { downloadText, isMobile, isTauri } from "./platform";
 import { writeClipboardText } from "./clipboard";
 import { recordError } from "./diagnostics";
 
@@ -12,14 +12,6 @@ function isAbort(err: unknown): boolean {
     err !== null &&
     (err as { name?: string }).name === "AbortError"
   );
-}
-
-/** True on the Android / iOS builds, where the browser fallbacks do not apply:
- *  a WebView silently drops the `<a download>` click, so a "saved a file" claim
- *  there is one the reader can only disprove by hunting for the file. */
-function isMobile(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
 /**
