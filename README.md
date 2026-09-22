@@ -31,6 +31,17 @@ npm run tauri dev    # 桌面端
 npm run tauri build  # 按当前系统打包
 ```
 
+> **在 Windows 上用 `npm install`，不要用 `npm ci`。**
+>
+> 仓库里的 `package-lock.json` 是在 Linux 上生成的（CI 跑在 Linux）。这套依赖里有
+> 平台相关的原生包，npm 在不同平台上把它们**提升到不同位置** —— 比如 `lightningcss`
+> 在 Linux 上挂在 `vite` 下、在 Windows 上挂在 `@tailwindcss/node` 下。结果是**一份
+> lock 无法同时满足两个平台的 `npm ci`**：这是 npm 在这种依赖上的固有限制，不是
+> 配置写错了。
+>
+> CI 用 Linux 的 lock 跑 `npm ci`（这是它该做的），本地开发用 `npm install` 就好，
+> 两者结果一样。`npm install` 之后 lock 会有改动，**不要提交**。
+
 Windows 安装包：`npm run dist:win`  
 打开 `examples/full-syntax.md` 可看完整语法和阅读效果。
 
