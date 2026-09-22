@@ -1,0 +1,51 @@
+# 依赖更新的配置。
+#
+# 安全更新不靠这个文件 —— 它是仓库设置里开着的,发现漏洞直接提 PR。这里管的是
+# **常规版本更新**,而那一件事只有在不打扰人的前提下才值得做,所以刻意配得慢:
+#
+# - 按月,不是每周。这是个阅读器,不是框架;跟不上的风险远小于每周被 PR 打断。
+# - 按生态分组。一次十几个小版本各自一个 PR 只会让人全部忽略,而忽略是所有
+#   依赖策略里最糟的一种 —— 它让人以为自己跟上了。
+# - 同时开放的 PR 有上限,超出的排队,不会积一堆在那儿等着腐烂。
+#
+# 不自动合并。CI 能证明它编译得过、测试还绿,证明不了阅读体验没变 ——
+# 而这个项目的全部价值就在阅读体验上。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      # 一次看一个大的,而不是十个小的。
+      npm-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "chore(deps)"
+    labels: [dependencies]
+
+  # 后端是 Rust(Tauri),和前端各有各的依赖树,得分开管。
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      cargo-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "chore(deps)"
+    labels: [dependencies]
+
+  # Actions 本身也会过期,而且是安全面最大的一处 —— 它拿得到仓库的 token。
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore(ci)"
+    labels: [dependencies, ci]
