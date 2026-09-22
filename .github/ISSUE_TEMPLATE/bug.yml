@@ -1,0 +1,49 @@
+name: 功能出错了 / Something is broken
+description: 打开、编辑、保存、搜索这些功能没有按预期工作
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        先说清楚一件事：**这个仓库是桌面版（Windows / macOS / Linux）**。
+        iPhone / Android 版不在这里，那边的问题请走 App Store 的留言。
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 发生了什么
+      description: 你做了什么，然后看到了什么。
+      placeholder: |
+        我双击了一个 .md 文件，它打开了，但……
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 你期望发生什么
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: 诊断信息
+      description: |
+        菜单 → **复制诊断信息**，粘贴到这里。
+        里面有版本号、系统、和当前文档的信息 —— 没有它就很难定位，
+        而且这个 App 不会自己上报任何东西（见 PRIVACY.md），只能靠你贴。
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: 能复现的那段 Markdown
+      description: |
+        如果和某篇文档有关，把**能复现的最小片段**贴进来。
+        去掉隐私内容没关系，只要还能复现就行。
+      render: markdown
+    validations:
+      required: false

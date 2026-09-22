@@ -54,6 +54,8 @@ export const zhHant = {
   ok: "確定",
   version: "版本",
   feedback: "回報問題",
+  iosApp: "iPhone 版",
+  iosAppHint: "在手機上讀同一件事 —— 在 App Store 上",
   feedbackCopied: "診斷資訊已複製，貼到 Issue 裡就行",
   clipboard: "讀取剪貼簿",
   clipboardTitle: "剪貼簿內容",

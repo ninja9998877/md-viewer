@@ -33,6 +33,7 @@ import { joinPath } from "./lib/resolve-image";
 import { readClipboardText, writeClipboardText } from "./lib/clipboard";
 import { openFeedbackPage } from "./lib/feedback";
 import { openPath } from "@tauri-apps/plugin-opener";
+import { openIosAppPage } from "./lib/ios-app";
 import {
   countLines,
   downloadText,
@@ -1037,6 +1038,10 @@ export default function App() {
                 onFeedback={() => {
                   setMenuOpen(false);
                   void sendFeedback();
+                }}
+                onIosApp={() => {
+                  setMenuOpen(false);
+                  void openIosAppPage();
                 }}
                 onToggleToc={() => {
                   setMenuOpen(false);

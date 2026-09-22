@@ -1,0 +1,16 @@
+# 只有两类模板，不给"空白 issue"的入口。
+#
+# 这是产品定位的一部分，不是洁癖。墨页不是编辑器、不是知识库、不是插件平台，
+# 而空白输入框最容易收到的就是"能不能加同步 / 双链 / Vim 模式" —— 那类请求
+# 每一条都要认真回绝一次，而回绝得多了，维护者的精力就从"把长文排好读"
+# 挪到了"解释为什么不做"。
+#
+# 模板把话提前说清楚，两边都省事。真的想提功能建议，下面两个地方比 issue 合适。
+blank_issues_enabled: false
+contact_links:
+  - name: 先看看路线图
+    url: https://github.com/ninja9998877/md-viewer/blob/main/ROADMAP.md
+    about: 什么做、什么不做、为什么 —— 都在这里写着，包括刻意不做的那些
+  - name: 隐私说明
+    url: https://github.com/ninja9998877/md-viewer/blob/main/PRIVACY.md
+    about: 这个 App 收集什么。答案是没有，但值得看一遍它是怎么做到的

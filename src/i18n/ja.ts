@@ -60,6 +60,8 @@ export const ja = {
   ok: "OK",
   version: "バージョン",
   feedback: "問題を報告",
+  iosApp: "iPhone 版",
+  iosAppHint: "同じ文書をスマホでも —— App Store にあります",
   feedbackCopied: "診断情報をコピーしました — Issue に貼り付けてください",
   clipboard: "クリップボードを読む",
   clipboardTitle: "クリップボードのテキスト",

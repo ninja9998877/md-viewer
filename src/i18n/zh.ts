@@ -47,6 +47,8 @@ export const zh = {
   ok: "确定",
   version: "版本",
   feedback: "反馈问题",
+  iosApp: "iPhone 版",
+  iosAppHint: "手机上读同一件事 —— 在 App Store 上",
   clipboard: "读剪贴板",
   clipboardTitle: "剪贴板内容",
   clipboardEmpty: "剪贴板里没有文本",

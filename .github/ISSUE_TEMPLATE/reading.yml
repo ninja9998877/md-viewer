@@ -1,0 +1,36 @@
+name: 读起来不舒服 / Reads badly
+description: 排版、间距、颜色、滚动 —— 某个地方让长文读着难受
+labels: [reading]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        这类反馈和「功能坏了」一样重要。这个阅读器的全部工作就是把 Agent 写的长文
+        排得能读下去，所以**「这里不好看」就是有效的问题报告**。
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 哪里读着难受
+      description: 越具体越好 —— 哪个元素、什么情况下、你期望它是什么样。
+      placeholder: |
+        长表格在窄窗口下会横向溢出，读的时候要来回拖。
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: 能触发的 Markdown 片段
+      description: 一段最小的、能看出问题的内容。去掉隐私内容没关系。
+      render: markdown
+    validations:
+      required: false
+
+  - type: input
+    id: environment
+    attributes:
+      label: 系统 / 窗口大小
+      description: 比如「Windows 11 / 窗口拉窄到一半屏」。
+    validations:
+      required: false

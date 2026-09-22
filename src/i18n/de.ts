@@ -54,6 +54,8 @@ export const de = {
   ok: "OK",
   version: "Version",
   feedback: "Problem melden",
+  iosApp: "iPhone-App",
+  iosAppHint: "Dieselben Dokumente auf dem Telefon — im App Store",
   feedbackCopied: "Diagnose kopiert – in das Issue einfügen",
   clipboard: "Zwischenablage lesen",
   clipboardTitle: "Text aus der Zwischenablage",

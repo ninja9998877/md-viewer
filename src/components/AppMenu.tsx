@@ -35,6 +35,8 @@ interface AppMenuProps {
   version: string;
   onClipboard: () => void;
   onFeedback: () => void;
+  /** Opens the iPhone app's App Store page in the browser. */
+  onIosApp: () => void;
   onToggleToc: () => void;
   onFont: (next: number) => void;
   onPaper: (paper: PaperWidth) => void;
@@ -61,6 +63,7 @@ export function AppMenu({
   version,
   onClipboard,
   onFeedback,
+  onIosApp,
   onToggleToc,
   onFont,
   onPaper,
@@ -261,7 +264,18 @@ export function AppMenu({
       ) : null}
 
       <div className="app-menu__sep" />
+      {/* The only thing in this menu that is not about the document on screen.
+          Kept to one line and put in its own group at the bottom: this is a
+          free, MIT-licensed desktop app pointing at a paid phone app, and a
+          reader who came here to read should not have to step over it.
+
+          It opens the App Store page in the browser. That is a URL handoff, not
+          a request from this app — nothing here talks to the network, and this
+          is the same mechanism the "open link" button in a document uses. */}
       <div className="app-menu__group">
+        <button type="button" role="menuitem" onClick={onIosApp} title={t.iosAppHint}>
+          {t.iosApp}
+        </button>
         <button type="button" role="menuitem" onClick={onFeedback}>
           {t.feedback}
         </button>

@@ -50,6 +50,8 @@ export const en = {
   ok: "OK",
   version: "Version",
   feedback: "Report a problem",
+  iosApp: "iPhone app",
+  iosAppHint: "Read the same documents on your phone — on the App Store",
   clipboard: "Read clipboard",
   clipboardTitle: "Clipboard text",
   clipboardEmpty: "Nothing to read on the clipboard",
