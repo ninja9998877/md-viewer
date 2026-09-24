@@ -21,9 +21,10 @@ export const zh = {
   // 分享出去时附在正文末尾的署名，要在一行里说清两个卖点：为 Agent 而写、
   // 以及纯本地不联网。后半句不是宣传语 —— APK 里已经剥掉了 INTERNET 权限，
   // 见 scripts/patch-android-manifest.py。
-  // 刻意不放链接：墨页还没有官网，桌面仓库也尚未开源，放上去只会是死链。
+  // 现在带链接了 —— 当初不放是因为"还没有官网,放上去只会是死链",那个前提已经不成立。
+  // 链接必须带 /cn/:浏览器实测,不带地区前缀会被重定向到 App Store 的 Today 首页。
   // 用 emoji 当图标是为了不依赖任何托管资源 —— 任何 Markdown 渲染器都能显示。
-  shareFooter: "> 📖 **墨页 Moye** — 专为 Agent 设计的 Markdown 阅读器 · 纯本地，不联网",
+  shareFooter: "> 📖 **墨页 Moye** — 专为 Agent 设计的 Markdown 阅读器 · 纯本地，不联网\n> iPhone 上也能这样读 → https://apps.apple.com/cn/app/id6811943403",
   snapshotOpened: "原文件已失效，已打开本地快照",
   unsaved: "未保存",
   unsavedDoc: "未保存的文档",

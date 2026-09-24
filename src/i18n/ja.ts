@@ -36,7 +36,7 @@ export const ja = {
   // 文書を読むためのもので、完全にローカルで動く。後半は marketing ではなく、
   // APK が INTERNET 権限を落としていることの説明でもある。
   shareFooter:
-    "> 📖 **Moye** — エージェントが書いた Markdown を読むためのリーダー · 完全ローカル、ネットワークなし",
+    "> 📖 **Moye** — エージェントが書いた Markdown を読むためのリーダー · 完全ローカル、ネットワークなし\n> iPhone でも同じように読めます → https://apps.apple.com/cn/app/id6811943403",
   snapshotOpened: "元のファイルにアクセスできないため、ローカルコピーを開きました",
   unsaved: "未保存",
   unsavedDoc: "無題の文書",

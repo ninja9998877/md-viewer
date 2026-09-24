@@ -23,10 +23,13 @@ export const en = {
   // selling points — written for Agents, and purely local with no networking.
   // The second half is not marketing copy: the APK strips the INTERNET
   // permission, see scripts/patch-android-manifest.py.
-  // Deliberately linkless: there is no website yet and the desktop repo is not
-  // public, so a URL here would just be a dead end. The emoji stands in for an
-  // icon so nothing has to be hosted — every Markdown renderer can show it.
-  shareFooter: "> 📖 **Moye** — a Markdown reader built for Agents · fully local, no network",
+  // It carries a link now. It did not use to — the reason was that there was no
+  // website yet and the desktop repo was not public, so a URL would have been a
+  // dead end. Both stopped being true.
+  // The link must keep its /cn/: measured in a browser, dropping the storefront
+  // redirects to the App Store's "Today" page rather than the app. The emoji
+  // stands in for an icon so nothing has to be hosted.
+  shareFooter: "> 📖 **Moye** — a Markdown reader built for Agents · fully local, no network\n> Read like this on iPhone → https://apps.apple.com/cn/app/id6811943403",
   snapshotOpened: "The original is unreachable — opened the local copy",
   unsaved: "Unsaved",
   unsavedDoc: "Untitled document",

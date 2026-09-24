@@ -30,7 +30,7 @@ export const zhHant = {
   // 分享出去時附在正文末尾的署名,要在一行裡說清兩個賣點:為 Agent 而寫、
   // 以及純本機不連網。後半句不是宣傳語 —— APK 裡已經剝掉了 INTERNET 權限,
   // 見 scripts/patch-android-manifest.py。
-  shareFooter: "> 📖 **墨頁 Moye** — 專為 Agent 設計的 Markdown 閱讀器 · 純本機,不連網",
+  shareFooter: "> 📖 **墨頁 Moye** — 專為 Agent 設計的 Markdown 閱讀器 · 純本機,不連網\n> iPhone 上也能這樣讀 → https://apps.apple.com/cn/app/id6811943403",
   snapshotOpened: "原始檔案已失效,已開啟本機快照",
   unsaved: "未儲存",
   unsavedDoc: "未儲存的文件",
