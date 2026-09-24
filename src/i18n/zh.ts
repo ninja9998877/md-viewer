@@ -22,9 +22,11 @@ export const zh = {
   // 以及纯本地不联网。后半句不是宣传语 —— APK 里已经剥掉了 INTERNET 权限，
   // 见 scripts/patch-android-manifest.py。
   // 现在带链接了 —— 当初不放是因为"还没有官网,放上去只会是死链",那个前提已经不成立。
-  // 链接必须带 /cn/:浏览器实测,不带地区前缀会被重定向到 App Store 的 Today 首页。
+  // 链接**不要**加地区前缀。我一度加过 /cn/,理由是"实测不带前缀会被送去 Today
+  // 首页" —— 那是错的:开发机在中国,苹果按出口 IP 做地域重定向。而这个 App
+  // 没有在中国区上架(174 个地区唯独缺 CHN),/cn/ 恰好指向唯一一个买不到它的店。
   // 用 emoji 当图标是为了不依赖任何托管资源 —— 任何 Markdown 渲染器都能显示。
-  shareFooter: "> 📖 **墨页 Moye** — 专为 Agent 设计的 Markdown 阅读器 · 纯本地，不联网\n> iPhone 上也能这样读 → https://apps.apple.com/cn/app/id6811943403",
+  shareFooter: "> 📖 **墨页 Moye** — 专为 Agent 设计的 Markdown 阅读器 · 纯本地，不联网\n> iPhone 上也能这样读 → https://apps.apple.com/app/id6811943403",
   snapshotOpened: "原文件已失效，已打开本地快照",
   unsaved: "未保存",
   unsavedDoc: "未保存的文档",

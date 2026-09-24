@@ -26,10 +26,12 @@ export const en = {
   // It carries a link now. It did not use to — the reason was that there was no
   // website yet and the desktop repo was not public, so a URL would have been a
   // dead end. Both stopped being true.
-  // The link must keep its /cn/: measured in a browser, dropping the storefront
-  // redirects to the App Store's "Today" page rather than the app. The emoji
-  // stands in for an icon so nothing has to be hosted.
-  shareFooter: "> 📖 **Moye** — a Markdown reader built for Agents · fully local, no network\n> Read like this on iPhone → https://apps.apple.com/cn/app/id6811943403",
+  // Do NOT add a storefront to the link. I added /cn/ once, on the strength of a
+  // browser test — wrong: the dev machine is in China and Apple geolocates bare
+  // URLs. The app is not sold in China (174 territories, CHN the only one
+  // missing), so /cn/ pointed at the one storefront that cannot sell it.
+  // The emoji stands in for an icon so nothing has to be hosted.
+  shareFooter: "> 📖 **Moye** — a Markdown reader built for Agents · fully local, no network\n> Read like this on iPhone → https://apps.apple.com/app/id6811943403",
   snapshotOpened: "The original is unreachable — opened the local copy",
   unsaved: "Unsaved",
   unsavedDoc: "Untitled document",

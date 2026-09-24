@@ -30,7 +30,7 @@ export const de = {
   // Die Zeile am Ende eines geteilten Dokuments. Keine Werbung, sondern eine
   // Tatsachenbehauptung: für Dokumente aus Agenten gebaut, vollständig lokal.
   shareFooter:
-    "> 📖 **Moye** — ein Markdown-Reader für Dokumente aus Agenten · vollständig lokal, ohne Netzwerk\n> So lesen auf dem iPhone → https://apps.apple.com/cn/app/id6811943403",
+    "> 📖 **Moye** — ein Markdown-Reader für Dokumente aus Agenten · vollständig lokal, ohne Netzwerk\n> So lesen auf dem iPhone → https://apps.apple.com/app/id6811943403",
   snapshotOpened: "Das Original ist nicht erreichbar – lokale Kopie geöffnet",
   unsaved: "Ungespeichert",
   unsavedDoc: "Unbenanntes Dokument",

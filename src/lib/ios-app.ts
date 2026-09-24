@@ -7,24 +7,20 @@ export const IOS_APP_ID = "6811943403";
 /**
  * Where the iPhone version lives.
  *
- * **The `/cn/` is load-bearing.** Without a storefront in the path,
- * `https://apps.apple.com/app/id…` is redirected to the App Store's "Today"
- * page — a generic landing page, not this app. Measured in a real browser:
+ * **No storefront in the path, on purpose.** I had `/cn/` here for a while, with
+ * a table of "measurements" justifying it — all of them taken from this machine,
+ * which sits in China and therefore gets geolocated by Apple. They were real
+ * observations of the wrong thing. The redirect to the "Today" page that I read
+ * as "a storefront is required" was really this: **the app is not sold in
+ * China.** Of 174 territories it is listed in, CHN is the only one missing, so
+ * `/cn/` pointed at the one storefront that cannot sell it — the bare URL was
+ * correct all along and I "fixed" it into the only case that genuinely breaks.
  *
- *     /app/id6811943403                       → /cn/iphone/today   ✗
- *     /app/moye-markdown-reader/id6811943403  → /cn/iphone/today   ✗
- *     /cn/app/id6811943403                    → the app's page     ✓
- *
- * A plain HTTP fetch of the bare URL *does* return the right page, which is why
- * this is worth writing down: the obvious way to check it lies. Only loading it
- * in a browser shows where a person actually ends up.
- *
- * `/cn/` is deliberate rather than geo-detected. The app is Chinese-first and
- * listed in the Chinese storefront; hardcoding one storefront is honest about
- * who it is for, and someone in another region still lands on the app page
- * rather than on Today.
+ * Leaving the storefront out lets Apple send each visitor to a region that
+ * actually has the app. A browser on this machine cannot verify that; it can
+ * only verify the Chinese behavior, which is the case that must not be trusted.
  */
-export const IOS_APP_URL = `https://apps.apple.com/cn/app/id${IOS_APP_ID}`;
+export const IOS_APP_URL = `https://apps.apple.com/app/id${IOS_APP_ID}`;
 
 /**
  * Open the App Store page. Inside the app this goes to the system browser;
