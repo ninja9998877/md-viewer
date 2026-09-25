@@ -29,11 +29,24 @@ export function splitFrontmatter(source: string): {
     if (colon <= 0) continue;
     const key = trimmed.slice(0, colon).trim();
     let value = trimmed.slice(colon + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
+    if (value.startsWith('"') && value.endsWith('"')) {
+      // Double-quoted, so the escapes inside are real and have to be undone.
+      //
+      // Stripping the quotes alone is not enough, and that is not a nitpick:
+      // 墨盒 (`mohe/src/core/format.ts`) always writes its values quoted and
+      // escapes `\` and `"`. Without this, a title of `he said "hi"` — or any
+      // title carrying a Windows path — shows up in the card as
+      // `he said \"hi\": C:\\path\\x`. The file is right; the reader was wrong.
+      //
+      // Single pass with a replacer rather than a chain of `.replace` calls:
+      // doing `\\` first would turn an escaped backslash into a plain one and
+      // then `\"` would start eating quote characters that were never escaped.
+      value = value.slice(1, -1).replace(/\\(["\\nt])/g, (_, ch: string) =>
+        ch === "n" ? "\n" : ch === "t" ? "\t" : ch,
+      );
+    } else if (value.startsWith("'") && value.endsWith("'")) {
+      // Single-quoted YAML has no escapes at all — the quote is doubled instead.
+      value = value.slice(1, -1).replace(/''/g, "'");
     }
     if (key) data[key] = value;
   }
