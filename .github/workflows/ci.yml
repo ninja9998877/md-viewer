@@ -5,9 +5,24 @@ name: CI
 # contributor's pull request has to be checkable without a Windows machine and a
 # Tauri toolchain, and both of those are avoidable here — the type check, the
 # unit tests and the frontend build need nothing but Node.
+#
+# ── 触发方式:不是每次提交 ──────────────────────────────────────────────
+#
+# 原来它还挂在 `push: branches: [main]` 上,也就是每推一次就跑一遍。去掉它是
+# 一条更大的规矩的一部分:**打包和验证都按需,不做成每次提交的副产品**
+# (同一时间墨盒那边也把"无签名编译验证"和"每次 push 打 APK"两条都改成了手动)。
+#
+# **`pull_request` 留着,而且是有意的。** 它和 `push` 不是一回事:
+#
+#   * 它在你日常直接推 main 的工作流里**一次都不会触发** —— 零成本;
+#   * 而上面那段话就是这条工作流存在的理由。删掉它,这个文件就没有存在意义了 ——
+#     它跑的三件事(类型检查、单元测试、前端构建)全部是为了回答
+#     "别人提的这个 PR 能不能用"。
+#   * 何况**公开仓库的 Actions 是免费的**(GitHub 官方:公开仓库用标准 runner
+#     不计额度),这条即使跑满也不花钱。
+#
+# 如果你要的是"任何情况下都不自动跑",把 `pull_request` 也删掉即可 —— 一行。
 on:
-  push:
-    branches: [main]
   pull_request:
 
 jobs:
